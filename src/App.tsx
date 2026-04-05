@@ -114,6 +114,40 @@ const Carousel = ({ title, videos }: { title: string, videos: Video[], key?: str
   );
 };
 
+const AdBanner = ({ profile, type = 'normal' }: { profile: Profile | null, type?: 'normal' | 'discreet' }) => {
+  const shouldShow = !profile || profile.plan === 'FREE';
+
+  useEffect(() => {
+    if (shouldShow) {
+      try {
+        // @ts-ignore
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        console.error("AdSense error:", e);
+      }
+    }
+  }, [shouldShow]);
+
+  if (!shouldShow) return null;
+
+  return (
+    <div className={cn(
+      "w-full flex justify-center my-12 px-4",
+      type === 'discreet' ? "opacity-30 scale-95 hover:opacity-100 transition-opacity" : "opacity-100"
+    )}>
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full max-w-5xl flex flex-col items-center justify-center min-h-[100px] relative overflow-hidden backdrop-blur-sm">
+        <span className="absolute top-2 right-4 text-[8px] text-gray-600 font-bold uppercase tracking-widest">Publicidade</span>
+        <ins className="adsbygoogle"
+             style={{ display: 'block', width: '100%', minWidth: '250px', minHeight: '90px' }}
+             data-ad-client="ca-pub-7197376783143404"
+             data-ad-slot="auto"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+      </div>
+    </div>
+  );
+};
+
 const CookieBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -380,6 +414,8 @@ const LandingPage = () => {
         </motion.div>
       </div>
 
+      <AdBanner profile={null} type="discreet" />
+
       {/* Plans Section */}
       <div className="py-24 px-4 md:px-12 bg-black flex flex-col items-center">
         <h2 className="text-3xl md:text-5xl font-black mb-8 italic tracking-tighter uppercase text-center">Escolha o melhor plano para você</h2>
@@ -541,12 +577,14 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
       {/* Carousels */}
       <div className="-mt-12 relative z-10">
-        {categories.map(cat => (
-          <Carousel 
-            key={cat} 
-            title={cat} 
-            videos={videos.filter(v => v.category === cat)} 
-          />
+        {categories.map((cat, idx) => (
+          <React.Fragment key={cat}>
+            <Carousel 
+              title={cat} 
+              videos={videos.filter(v => v.category === cat)} 
+            />
+            {idx === 0 && <AdBanner profile={profile} />}
+          </React.Fragment>
         ))}
       </div>
 
