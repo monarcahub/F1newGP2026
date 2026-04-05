@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-f1-blue: #26a9e0;
+  --color-citrus-yellow: #e1c117;
+  --color-dark-bg: #0A0A0A;
+  --color-dark-card: #1A1A1A;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-bg text-white antialiased;
+  }
+}
+
+.streaming-gradient {
+  background: linear-gradient(to top, rgba(10, 10, 10, 1) 0%, rgba(10, 10, 10, 0) 100%);
+}
