@@ -114,8 +114,9 @@ const Carousel = ({ title, videos }: { title: string, videos: Video[], key?: str
   );
 };
 
-const AdBanner = ({ profile, type = 'normal' }: { profile: Profile | null, type?: 'normal' | 'discreet' }) => {
-  const shouldShow = !profile || profile.plan === 'FREE';
+const AdBanner = ({ profile, type = 'normal', adSlot = 'auto' }: { profile: Profile | null, type?: 'normal' | 'discreet', adSlot?: string }) => {
+  // Discreet banners show for everyone (including paid), normal banners only for FREE/Guest
+  const shouldShow = type === 'discreet' ? true : (!profile || profile.plan === 'FREE');
   const adRef = useRef<HTMLModElement>(null);
   const pushedRef = useRef(false);
 
@@ -164,7 +165,7 @@ const AdBanner = ({ profile, type = 'normal' }: { profile: Profile | null, type?
         <ins ref={adRef} className="adsbygoogle"
              style={{ display: 'block', width: '100%', minWidth: '250px', minHeight: '90px', position: 'relative', zIndex: 1 }}
              data-ad-client="ca-pub-7197376783143404"
-             data-ad-slot="auto"
+             data-ad-slot={adSlot}
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
       </div>
@@ -438,7 +439,7 @@ const LandingPage = () => {
         </motion.div>
       </div>
 
-      <AdBanner profile={null} type="discreet" />
+      <AdBanner profile={null} type="discreet" adSlot="2704581234" />
 
       {/* Plans Section */}
       <div className="py-24 px-4 md:px-12 bg-black flex flex-col items-center">
