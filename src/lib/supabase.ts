@@ -11,7 +11,7 @@ export type Profile = {
   phone: string | null;
   full_name: string | null;
   subscription_status: 'ACTIVE' | 'INACTIVE' | 'TEST';
-  plan: 'FREE' | 'MONTHLY' | 'ANNUAL';
+  plan: 'FREE' | 'MONTHLY' | 'ANNUAL' | 'MENSAL' | 'ANUAL';
   role: 'admin' | 'user';
   created_at: string;
 };

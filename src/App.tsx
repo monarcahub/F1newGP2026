@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   Play, 
@@ -116,15 +116,33 @@ const Carousel = ({ title, videos }: { title: string, videos: Video[], key?: str
 
 const AdBanner = ({ profile, type = 'normal' }: { profile: Profile | null, type?: 'normal' | 'discreet' }) => {
   const shouldShow = !profile || profile.plan === 'FREE';
+  const adRef = useRef<HTMLModElement>(null);
+  const pushedRef = useRef(false);
 
   useEffect(() => {
-    if (shouldShow) {
-      try {
-        // @ts-ignore
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        console.error("AdSense error:", e);
-      }
+    if (shouldShow && adRef.current && !pushedRef.current) {
+      const timer = setTimeout(() => {
+        try {
+          if (adRef.current && !pushedRef.current) {
+            const status = adRef.current.getAttribute('data-adsbygoogle-status');
+            if (status === 'done') {
+              pushedRef.current = true;
+              return;
+            }
+
+            const width = adRef.current.offsetWidth;
+            if (width > 0) {
+              // @ts-ignore
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+              pushedRef.current = true;
+            }
+          }
+        } catch (e) {
+          console.error("AdSense error:", e);
+        }
+      }, 1000); // Increased delay to ensure layout is ready
+
+      return () => clearTimeout(timer);
     }
   }, [shouldShow]);
 
@@ -133,12 +151,18 @@ const AdBanner = ({ profile, type = 'normal' }: { profile: Profile | null, type?
   return (
     <div className={cn(
       "w-full flex justify-center my-12 px-4",
-      type === 'discreet' ? "opacity-30 scale-95 hover:opacity-100 transition-opacity" : "opacity-100"
+      type === 'discreet' ? "opacity-60 scale-95 hover:opacity-100 transition-opacity" : "opacity-100"
     )}>
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full max-w-5xl flex flex-col items-center justify-center min-h-[100px] relative overflow-hidden backdrop-blur-sm">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full max-w-5xl flex flex-col items-center justify-center min-h-[120px] relative overflow-hidden backdrop-blur-sm">
         <span className="absolute top-2 right-4 text-[8px] text-gray-600 font-bold uppercase tracking-widest">Publicidade</span>
-        <ins className="adsbygoogle"
-             style={{ display: 'block', width: '100%', minWidth: '250px', minHeight: '90px' }}
+        
+        {/* Placeholder for when ad is loading or not available */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+          <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">Espaço Publicitário</div>
+        </div>
+
+        <ins ref={adRef} className="adsbygoogle"
+             style={{ display: 'block', width: '100%', minWidth: '250px', minHeight: '90px', position: 'relative', zIndex: 1 }}
              data-ad-client="ca-pub-7197376783143404"
              data-ad-slot="auto"
              data-ad-format="auto"
@@ -452,7 +476,7 @@ const LandingPage = () => {
             <div className="text-4xl font-black mb-8 uppercase tracking-tighter text-white italic">GRÁTIS</div>
             <ul className="space-y-4 mb-10 flex-1">
               <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Comunidade Aberta no Telegram</li>
-              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Temporada Atual (2024+) em HD</li>
+              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Temporada Atual (2026+) em HD</li>
               <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Notícias e Destaques em Tempo Real</li>
               <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Upgrade para Premium a qualquer momento</li>
             </ul>
@@ -774,13 +798,13 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
           const year = data.year;
           const plan = profile.plan;
 
-          if (plan === 'FREE' && year < 2024) {
-             // Free plan only gets current season (assuming 2024 is current)
+          if (plan === 'FREE' && year < 2026) {
+             // Free plan only gets current season (assuming 2026 is current)
              navigate('/checkout');
              return;
           }
 
-          if (plan === 'MONTHLY' && year < 1981) {
+          if ((plan === 'MONTHLY' || plan === 'MENSAL') && year < 1981) {
              // Monthly plan gets 1981 onwards
              navigate('/checkout');
              return;
@@ -1474,8 +1498,10 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
                       className="text-[10px] font-black px-2 py-1 rounded-md bg-black border border-white/10 outline-none text-gray-300"
                     >
                       <option value="FREE">FREE</option>
-                      <option value="MONTHLY">MENSAL</option>
-                      <option value="ANNUAL">ANUAL</option>
+                      <option value="MONTHLY">MENSAL (EN)</option>
+                      <option value="MENSAL">MENSAL (PT)</option>
+                      <option value="ANNUAL">ANUAL (EN)</option>
+                      <option value="ANUAL">ANUAL (PT)</option>
                     </select>
                   </td>
                   <td className="px-6 py-4">
@@ -1533,8 +1559,37 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    // Use a unique channel name to avoid conflicts
+    const channelName = `profile-${profile.id}-${Date.now()}`;
+    const subscription = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'f1profiles',
+          filter: `id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('Profile updated in real-time:', payload.new);
+          setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [profile?.id]);
 
   const fetchProfile = async (uid: string, authUser?: any) => {
     try {
