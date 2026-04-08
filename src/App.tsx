@@ -676,32 +676,52 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
 const Maintenance = () => {
   const [timeLeft, setTimeLeft] = useState({
-    days: 7,
+    days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0
   });
 
   useEffect(() => {
-    // Set target date to 7 days from now
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 7);
+    // Check if target date is already stored
+    let targetDateStr = localStorage.getItem('maintenance_target_date');
+    let targetDate: Date;
 
-    const timer = setInterval(() => {
+    if (targetDateStr) {
+      targetDate = new Date(targetDateStr);
+    } else {
+      // Set target date to 7 days from now and store it
+      targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 7);
+      localStorage.setItem('maintenance_target_date', targetDate.toISOString());
+    }
+
+    const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const distance = targetDate.getTime() - now;
 
       if (distance < 0) {
-        clearInterval(timer);
-        return;
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
       }
 
-      setTimeLeft({
+      return {
         days: Math.floor(distance / (1000 * 60 * 60 * 24)),
         hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
         minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
         seconds: Math.floor((distance % (1000 * 60)) / 1000)
-      });
+      };
+    };
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    const timer = setInterval(() => {
+      const newTimeLeft = calculateTimeLeft();
+      setTimeLeft(newTimeLeft);
+      
+      if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+        clearInterval(timer);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
