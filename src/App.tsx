@@ -24,6 +24,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase, type Profile, type Video } from './lib/supabase';
 import { cn } from './lib/utils';
 
+declare global {
+  interface Window {
+    chatwootSettings: any;
+    chatwootSDK: any;
+  }
+}
+
 // --- Components ---
 
 const Navbar = ({ profile }: { profile: Profile | null }) => {
@@ -219,6 +226,53 @@ const CookieBanner = () => {
       </div>
     </motion.div>
   );
+};
+
+const Chatwoot = ({ profile }: { profile: Profile | null }) => {
+  useEffect(() => {
+    if (!profile) return;
+
+    // Check if already loaded
+    if (window.chatwootSDK) {
+      // If already loaded, make sure it's visible
+      const bubble = document.querySelector('.woot-widget-bubble');
+      if (bubble) (bubble as HTMLElement).style.display = 'flex';
+      return;
+    }
+
+    window.chatwootSettings = {"position":"right","type":"expanded_bubble","launcherTitle":"Fale conosco no chat"};
+    
+    (function(d,t) {
+      var BASE_URL="https://chat.monarcahub.com";
+      var g=d.createElement(t) as HTMLScriptElement,s=d.getElementsByTagName(t)[0];
+      g.src=BASE_URL+"/packs/js/sdk.js";
+      g.defer = true;
+      g.async = true;
+      s.parentNode?.insertBefore(g,s);
+      g.onload=function(){
+        window.chatwootSDK.run({
+          websiteToken: 'M6uqQFAF1VYPUEqupprYaHMP',
+          baseUrl: BASE_URL
+        })
+      }
+    })(document,"script");
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile && window.chatwootSDK) {
+      // If user logs out, hide the widget
+      try {
+        const bubble = document.querySelector('.woot-widget-bubble');
+        if (bubble) (bubble as HTMLElement).style.display = 'none';
+        const holder = document.querySelector('.woot-widget-holder');
+        if (holder) (holder as HTMLElement).style.display = 'none';
+      } catch (e) {
+        console.error("Error hiding Chatwoot:", e);
+      }
+    }
+  }, [profile]);
+
+  return null;
 };
 
 const HighlightsSlider = () => {
@@ -472,7 +526,7 @@ const LandingPage = () => {
           <div className="p-8 rounded-[2rem] border border-white/5 bg-dark-card flex flex-col hover:border-white/10 transition-all group w-full md:w-[350px]">
             <div className="mb-8">
               <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico</p>
+              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
             </div>
             <div className="text-4xl font-black mb-8 uppercase tracking-tighter text-white italic">GRÁTIS</div>
             <ul className="space-y-4 mb-10 flex-1">
@@ -1103,7 +1157,7 @@ const Checkout = () => {
           <div className="bg-dark-card/50 p-10 rounded-[2.5rem] border border-white/5 flex flex-col backdrop-blur-sm hover:border-white/10 transition-colors w-full md:w-[380px]">
             <div className="mb-8">
               <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico</p>
+              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
             </div>
             <div className="text-4xl font-black text-white mb-8 uppercase tracking-tighter italic">GRÁTIS</div>
             <ul className="text-xs text-gray-400 space-y-4 mb-12 flex-1 font-medium">
@@ -1747,6 +1801,7 @@ export default function App() {
         </main>
         <Footer />
         <CookieBanner />
+        <Chatwoot profile={profile} />
       </div>
     </BrowserRouter>
   );
