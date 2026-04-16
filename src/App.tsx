@@ -18,10 +18,16 @@ import {
   Film,
   X,
   Eye,
-  EyeOff
+  EyeOff,
+  ThumbsUp,
+  Heart,
+  MessageSquare,
+  Send,
+  ChevronDown,
+  CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase, type Profile, type Video } from './lib/supabase';
+import { supabase, type Profile, type Video, type Reaction, type Comment } from './lib/supabase';
 import { cn } from './lib/utils';
 
 declare global {
@@ -52,8 +58,8 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
           />
         </Link>
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
-          <Link to="/maintenance" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/maintenance" className="hover:text-white transition-colors">Temporada 2026</Link>
+          <Link to="/" className="hover:text-white transition-colors">Home</Link>
+          <Link to="/season/2026" className="hover:text-white transition-colors">Temporada 2026</Link>
           <Link to="/maintenance" className="hover:text-white transition-colors">Décadas</Link>
           <Link to="/maintenance" className="hover:text-white transition-colors">Documentários</Link>
           <Link to="/maintenance" className="hover:text-white transition-colors">Arquivos</Link>
@@ -273,6 +279,253 @@ const Chatwoot = ({ profile }: { profile: Profile | null }) => {
   }, [profile]);
 
   return null;
+};
+
+const ReactionButton = ({ videoId, profile }: { videoId: string, profile: Profile | null }) => {
+  const [userReaction, setUserReaction] = useState<'like' | 'love' | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [counts, setCounts] = useState({ like: 0, love: 0 });
+
+  useEffect(() => {
+    fetchReactions();
+  }, [videoId, profile]);
+
+  const fetchReactions = async () => {
+    const { data, error } = await supabase
+      .from('f1reactions')
+      .select('type, user_id')
+      .eq('video_id', videoId);
+
+    if (data) {
+      const likeCount = data.filter(r => r.type === 'like').length;
+      const loveCount = data.filter(r => r.type === 'love').length;
+      setCounts({ like: likeCount, love: loveCount });
+
+      if (profile) {
+        const myReaction = data.find(r => r.user_id === profile.id);
+        setUserReaction(myReaction?.type || null);
+      }
+    }
+  };
+
+  const handleReaction = async (type: 'like' | 'love') => {
+    if (!profile) return;
+
+    if (userReaction === type) {
+      // Remove reaction
+      await supabase
+        .from('f1reactions')
+        .delete()
+        .eq('video_id', videoId)
+        .eq('user_id', profile.id);
+      setUserReaction(null);
+    } else {
+      // Upsert reaction
+      await supabase
+        .from('f1reactions')
+        .upsert({ video_id: videoId, user_id: profile.id, type });
+      setUserReaction(type);
+    }
+    setShowOptions(false);
+    fetchReactions();
+  };
+
+  return (
+    <div className="relative inline-block">
+      <button 
+        onMouseEnter={() => profile && setShowOptions(true)}
+        onClick={() => {
+          if (!profile) return;
+          setShowOptions(!showOptions);
+        }}
+        className={cn(
+          "flex items-center gap-2 px-4 py-2 rounded-full transition-all border",
+          userReaction 
+            ? "bg-f1-blue/10 border-f1-blue text-f1-blue" 
+            : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+        )}
+      >
+        {userReaction === 'love' ? <Heart size={18} fill="currentColor" /> : <ThumbsUp size={18} fill={userReaction === 'like' ? "currentColor" : "none"} />}
+        <span className="text-xs font-bold uppercase tracking-widest">
+          {userReaction === 'love' ? 'Amei' : userReaction === 'like' ? 'Gostei' : 'Gostei'}
+        </span>
+        <span className="text-[10px] opacity-60 ml-1">{counts.like + counts.love}</span>
+      </button>
+
+      <AnimatePresence>
+        {showOptions && profile && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            onMouseLeave={() => setShowOptions(false)}
+            className="absolute bottom-full left-0 mb-2 bg-dark-card border border-white/10 rounded-full p-1 flex gap-1 shadow-2xl z-50 backdrop-blur-xl"
+          >
+            <button 
+              onClick={() => handleReaction('like')}
+              className={cn(
+                "p-2 rounded-full transition-all hover:bg-white/10",
+                userReaction === 'like' ? "text-f1-blue" : "text-gray-400"
+              )}
+              title="Gostei"
+            >
+              <ThumbsUp size={20} fill={userReaction === 'like' ? "currentColor" : "none"} />
+            </button>
+            <button 
+              onClick={() => handleReaction('love')}
+              className={cn(
+                "p-2 rounded-full transition-all hover:bg-white/10",
+                userReaction === 'love' ? "text-red-500" : "text-gray-400"
+              )}
+              title="Amei"
+            >
+              <Heart size={20} fill={userReaction === 'love' ? "currentColor" : "none"} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profile | null }) => {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchComments();
+  }, [videoId]);
+
+  const fetchComments = async () => {
+    const { data, error } = await supabase
+      .from('f1comments')
+      .select('*, f1profiles(full_name, email)')
+      .eq('video_id', videoId)
+      .order('created_at', { ascending: true });
+
+    if (data) setComments(data);
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!profile || !newComment.trim()) return;
+
+    const { error } = await supabase
+      .from('f1comments')
+      .insert({
+        video_id: videoId,
+        user_id: profile.id,
+        content: newComment,
+        parent_id: replyTo
+      });
+
+    if (!error) {
+      setNewComment('');
+      setReplyTo(null);
+      fetchComments();
+    }
+  };
+
+  return (
+    <div id="comments" className="mt-16 max-w-4xl mx-auto px-4">
+      <h3 className="text-xl font-black mb-8 italic uppercase tracking-tighter flex items-center gap-3">
+        <MessageSquare size={20} className="text-f1-blue" />
+        Comentários ({comments.length})
+      </h3>
+
+      {profile ? (
+        <form onSubmit={handleSubmit} className="mb-12 bg-white/5 border border-white/10 rounded-2xl p-4">
+          {replyTo && (
+            <div className="flex items-center justify-between mb-2 px-2 py-1 bg-f1-blue/10 rounded-md">
+              <span className="text-[10px] text-f1-blue font-bold uppercase tracking-widest">Respondendo comentário</span>
+              <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white"><X size={14} /></button>
+            </div>
+          )}
+          <div className="flex gap-4">
+            <div className="w-10 h-10 rounded-full bg-f1-blue/20 flex items-center justify-center text-f1-blue font-bold shrink-0">
+              {profile.email[0].toUpperCase()}
+            </div>
+            <div className="flex-1 relative">
+              <textarea 
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="O que você achou dessa corrida?"
+                className="w-full bg-transparent border-none focus:ring-0 text-sm resize-none h-20"
+              />
+              <button 
+                type="submit"
+                disabled={!newComment.trim()}
+                className="absolute bottom-0 right-0 bg-f1-blue text-white p-2 rounded-full hover:scale-110 transition-transform disabled:opacity-50 disabled:scale-100"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <div className="mb-12 bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+          <p className="text-gray-400 text-sm mb-4">Você precisa estar logado para comentar e reagir.</p>
+          <Link to="/login" className="inline-block bg-white text-black px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors">Entrar agora</Link>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {comments.filter(c => !c.parent_id).map(comment => (
+          <div key={comment.id} className="group">
+            <div className="flex gap-4">
+              <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold shrink-0">
+                {comment.f1profiles?.email[0].toUpperCase() || '?'}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold">{comment.f1profiles?.full_name || comment.f1profiles?.email.split('@')[0]}</span>
+                  <span className="text-[10px] text-gray-600 font-medium">{new Date(comment.created_at).toLocaleDateString()}</span>
+                </div>
+                <p className="text-sm text-gray-300 leading-relaxed">{comment.content}</p>
+                {profile && (
+                  <button 
+                    onClick={() => {
+                      setReplyTo(comment.id);
+                      document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2 hover:text-f1-blue transition-colors"
+                  >
+                    Responder
+                  </button>
+                )}
+
+                {/* Replies */}
+                <div className="mt-4 space-y-4 ml-6 border-l border-white/5 pl-6">
+                  {comments.filter(r => r.parent_id === comment.id).map(reply => (
+                    <div key={reply.id}>
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-gray-500 text-xs font-bold shrink-0">
+                          {reply.f1profiles?.email[0].toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold">{reply.f1profiles?.full_name || reply.f1profiles?.email.split('@')[0]}</span>
+                            <span className="text-[10px] text-gray-700">{new Date(reply.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <p className="text-xs text-gray-400 leading-relaxed">{reply.content}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {comments.length === 0 && !loading && (
+          <p className="text-center text-gray-600 text-sm py-8 italic">Nenhum comentário ainda. Seja o primeiro!</p>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const HighlightsSlider = () => {
@@ -600,6 +853,9 @@ const LandingPage = () => {
 const Home = ({ profile }: { profile: Profile | null }) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -614,18 +870,25 @@ const Home = ({ profile }: { profile: Profile | null }) => {
     fetchVideos();
   }, []);
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Carregando GridPlay...</div>;
-
-  // Render Landing Page for logged-out users
-  if (!profile) {
-    return <LandingPage />;
-  }
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-dark-bg">
+      <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   const featured = videos[0];
   const categories = Array.from(new Set(videos.map(v => v.category))) as string[];
 
+  const handleWatchClick = (videoId: string) => {
+    if (!profile) {
+      setShowLoginModal(true);
+    } else {
+      navigate(`/watch/${videoId}`);
+    }
+  };
+
   return (
-    <div className="min-h-screen pb-20 pt-20 md:pt-24">
+    <div className="min-h-screen pb-20 pt-20 md:pt-24 bg-dark-bg">
       {/* Hero */}
       {featured && (
         <div className="relative h-[60vh] md:h-[75vh] w-full overflow-hidden rounded-b-[2rem] md:rounded-b-[3rem] mx-auto max-w-[1440px]">
@@ -634,6 +897,9 @@ const Home = ({ profile }: { profile: Profile | null }) => {
             className="w-full h-full object-cover"
             alt="Featured"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/hero/1920/1080`;
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
           <div className="absolute inset-0 streaming-gradient" />
@@ -642,88 +908,527 @@ const Home = ({ profile }: { profile: Profile | null }) => {
             <span className="text-citrus-yellow font-black tracking-widest text-[10px] md:text-xs mb-2 block uppercase">Destaque da Semana</span>
             <h1 className="text-3xl md:text-6xl font-black mb-4 italic tracking-tighter uppercase leading-none">{featured.title}</h1>
             <p className="text-gray-300 text-xs md:text-base mb-8 line-clamp-3 font-medium opacity-90">{featured.description}</p>
-            <div className="flex items-center gap-3">
-              <Link to={`/watch/${featured.id}`} className="bg-white text-black px-6 md:px-8 py-3 rounded-md font-bold text-sm flex items-center gap-2 hover:bg-gray-200 transition-colors">
-                <Play size={18} fill="black" /> Assistir Agora
-              </Link>
-              <button className="bg-gray-500/30 text-white px-6 md:px-8 py-3 rounded-md font-bold text-sm flex items-center gap-2 hover:bg-gray-500/50 transition-colors backdrop-blur-md">
-                <Info size={18} /> Detalhes
-              </button>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              {profile ? (
+                <>
+                  <button 
+                    onClick={() => handleWatchClick(featured.id)}
+                    className="bg-white text-black px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-transform shadow-xl"
+                  >
+                    <Play size={20} fill="black" /> Assistir Agora
+                  </button>
+                  <button className="bg-gray-500/30 text-white px-8 py-4 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-gray-500/50 transition-colors backdrop-blur-md">
+                    <Info size={18} /> Detalhes
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-wrap gap-4">
+                  <button 
+                    onClick={() => setShowLoginModal(true)}
+                    className="inline-flex items-center gap-3 bg-f1-blue text-white px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+                  >
+                    <User size={20} />
+                    Entrar
+                  </button>
+                  <button 
+                    onClick={() => setShowPlansModal(true)}
+                    className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all shadow-xl"
+                  >
+                    <CreditCard size={20} />
+                    Ver Planos
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
+      {/* Season 2026 Banner */}
+      <div className="mx-4 md:mx-12 -mt-12 relative z-20 mb-12">
+        <Link 
+          to="/season/2026"
+          className="group relative block w-full h-48 md:h-64 rounded-3xl overflow-hidden border border-white/10 hover:border-f1-blue/50 transition-all duration-500 shadow-2xl"
+        >
+          <img 
+            src="https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" 
+            alt="Temporada 2026"
+            className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 flex flex-col justify-center p-8 md:p-12">
+            <span className="text-f1-blue font-black tracking-widest text-[10px] md:text-xs mb-2 block uppercase">Exclusivo GridPlay</span>
+            <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase mb-4">Temporada 2026</h2>
+            <p className="text-gray-400 text-xs md:text-sm max-w-md font-medium mb-6">Acompanhe todas as corridas da temporada atual com imersão total e câmeras exclusivas.</p>
+            <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+              Explorar Temporada <ChevronRight size={16} />
+            </div>
+          </div>
+        </Link>
+      </div>
+
       {/* Carousels */}
-      <div className="-mt-12 relative z-10">
+      <div className="relative z-10">
         {categories.map((cat, idx) => (
           <React.Fragment key={cat}>
-            <Carousel 
-              title={cat} 
-              videos={videos.filter(v => v.category === cat)} 
-            />
+            <div className="px-4 md:px-12 mb-12">
+              <h2 className="text-2xl font-black mb-6 italic uppercase tracking-tighter flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-f1-blue" />
+                {cat}
+              </h2>
+              <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide snap-x">
+                {videos.filter(v => v.category === cat).map((video) => (
+                  <div 
+                    key={video.id}
+                    onClick={() => handleWatchClick(video.id)}
+                    className="relative flex-shrink-0 w-64 md:w-80 aspect-video bg-dark-card rounded-xl overflow-hidden group transition-all duration-300 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/50 cursor-pointer"
+                  >
+                    <img 
+                      src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/600/338`} 
+                      alt={video.title}
+                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/600/338`;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-4">
+                      <h3 className="text-sm md:text-base font-bold leading-tight group-hover:text-f1-blue transition-colors">{video.title}</h3>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{video.year}</p>
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all">
+                          <Play size={14} fill="currentColor" />
+                        </div>
+                      </div>
+                    </div>
+                    {video.status === 'PREMIUM' && (
+                      <div className="absolute top-3 right-3 bg-citrus-yellow text-black text-[8px] font-black px-2 py-1 rounded-sm uppercase tracking-widest shadow-lg">PREMIUM</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
             {idx === 0 && <AdBanner profile={profile} />}
           </React.Fragment>
         ))}
       </div>
 
       {/* Telegram CTA - Differentiated by Plan */}
-      <div className="mx-4 md:mx-12 mt-16">
-        <div className={cn(
-          "p-8 md:p-12 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-8 border transition-all duration-500",
-          profile.plan === 'FREE' 
-            ? "bg-dark-card border-white/5 shadow-xl" 
-            : "bg-gradient-to-br from-f1-blue/20 via-black to-transparent border-f1-blue/30 shadow-[0_0_50px_rgba(38,169,224,0.1)]"
-        )}>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center",
-                profile.plan === 'FREE' ? "bg-gray-800" : "bg-f1-blue/20"
-              )}>
-                <Users size={20} className={profile.plan === 'FREE' ? "text-gray-400" : "text-f1-blue"} />
+      {profile && (
+        <div className="mx-4 md:mx-12 mt-16">
+          <div className={cn(
+            "p-8 md:p-12 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-8 border transition-all duration-500",
+            profile.plan === 'FREE' 
+              ? "bg-dark-card border-white/5 shadow-xl" 
+              : "bg-gradient-to-br from-f1-blue/20 via-black to-transparent border-f1-blue/30 shadow-[0_0_50px_rgba(38,169,224,0.1)]"
+          )}>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  profile.plan === 'FREE' ? "bg-gray-800" : "bg-f1-blue/20"
+                )}>
+                  <Users size={20} className={profile.plan === 'FREE' ? "text-gray-400" : "text-f1-blue"} />
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
+                  {profile.plan === 'FREE' ? "Comunidade GridPlay" : "Canal VIP Telegram"}
+                </h2>
               </div>
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
-                {profile.plan === 'FREE' ? "Comunidade GridPlay" : "Canal VIP Telegram"}
-              </h2>
-            </div>
-            
-            <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed">
-              {profile.plan === 'FREE' 
-                ? "Como membro do Plano Grátis, você tem acesso à nossa comunidade aberta para discutir as corridas e acesso garantido a todas as transmissões da temporada atual em HD." 
-                : "Seu acesso Premium inclui o Canal VIP com o acervo histórico completo (1950-2026), documentários exclusivos e downloads liberados."}
-            </p>
+              
+              <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed">
+                {profile.plan === 'FREE' 
+                  ? "Como membro do Plano Grátis, você tem acesso à nossa comunidade aberta para discutir as corridas e acesso garantido a todas as transmissões da temporada atual em HD." 
+                  : "Seu acesso Premium inclui o Canal VIP com o acervo histórico completo (1950-2026), documentários exclusivos e downloads liberados."}
+              </p>
 
-            {profile.plan === 'FREE' && (
-              <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <Link to="/checkout" className="text-citrus-yellow font-black text-xs uppercase tracking-widest flex items-center gap-2 group">
-                  Quero o acervo histórico completo <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col items-center gap-4 w-full md:w-auto">
-            <a 
-              href={profile.plan === 'FREE' ? "https://t.me/+D15DI9e0ckc0NTQx" : "https://t.me/+NkAHGmviP0kxYzZh"} 
-              target="_blank" 
-              rel="noreferrer" 
-              className={cn(
-                "w-full md:w-auto px-10 py-5 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 shadow-lg",
-                profile.plan === 'FREE' 
-                  ? "bg-white text-black hover:bg-gray-200" 
-                  : "bg-[#24A1DE] text-white hover:bg-[#24A1DE]/90 shadow-[#24A1DE]/20"
+              {profile.plan === 'FREE' && (
+                <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <Link to="/checkout" className="text-citrus-yellow font-black text-xs uppercase tracking-widest flex items-center gap-2 group">
+                    Quero o acervo histórico completo <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
               )}
-            >
-              <ExternalLink size={20} /> 
-              {profile.plan === 'FREE' ? "Entre no grupo grátis" : "Acessar Canal VIP"}
-            </a>
-            {profile.plan === 'FREE' && (
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Acesso Gratuito Liberado</span>
-            )}
+            </div>
+
+            <div className="flex flex-col items-center gap-4 w-full md:w-auto">
+              <a 
+                href={profile.plan === 'FREE' ? "https://t.me/+D15DI9e0ckc0NTQx" : "https://t.me/+NkAHGmviP0kxYzZh"} 
+                target="_blank" 
+                rel="noreferrer" 
+                className={cn(
+                  "w-full md:w-auto px-10 py-5 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 shadow-lg",
+                  profile.plan === 'FREE' 
+                    ? "bg-white text-black hover:bg-gray-200" 
+                    : "bg-[#24A1DE] text-white hover:bg-[#24A1DE]/90 shadow-[#24A1DE]/20"
+                )}
+              >
+                <ExternalLink size={20} /> 
+                {profile.plan === 'FREE' ? "Entre no grupo grátis" : "Acessar Canal VIP"}
+              </a>
+              {profile.plan === 'FREE' && (
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Acesso Gratuito Liberado</span>
+              )}
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoginModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+            >
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <div className="p-0">
+                <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPlansModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlansModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-6xl bg-dark-bg rounded-3xl overflow-y-auto max-h-[90vh] shadow-2xl border border-white/10 p-8 md:p-12"
+            >
+              <button 
+                onClick={() => setShowPlansModal(false)}
+                className="absolute top-6 right-6 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <Checkout isModal />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | undefined, availableYears: number[], onSelect: (y: number) => void }) => {
+  const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <button 
+        onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
+        className="flex items-center gap-3 bg-white/5 border border-white/10 px-6 py-3 rounded-xl hover:bg-white/10 transition-all group"
+      >
+        <span className="text-sm font-black italic uppercase tracking-tighter">Temporada {year || '2026'}</span>
+        <ChevronDown size={18} className={cn("transition-transform duration-300", showSeasonDropdown ? "rotate-180" : "")} />
+      </button>
+
+      <AnimatePresence>
+        {showSeasonDropdown && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute top-full left-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
+          >
+            {availableYears.map((y) => (
+              <button
+                key={y}
+                onClick={() => {
+                  onSelect(y);
+                  setShowSeasonDropdown(false);
+                }}
+                className={cn(
+                  "w-full text-left px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-white/5 transition-colors",
+                  parseInt(year || '2026') === y ? "text-f1-blue bg-f1-blue/5" : "text-gray-400"
+                )}
+              >
+                Temporada {y}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const SeasonPage = ({ profile }: { profile: Profile | null }) => {
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
+  const { year } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchAvailableYears = async () => {
+      const { data } = await supabase
+        .from('videos')
+        .select('year');
+      
+      if (data) {
+        const years = Array.from(new Set(data.map(v => v.year))).sort((a, b) => b - a);
+        setAvailableYears(years);
+      }
+    };
+    fetchAvailableYears();
+  }, []);
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('year', parseInt(year || '2026'))
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching season videos:", error);
+      } else {
+        setVideos(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchVideos();
+  }, [year]);
+
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-dark-bg">
+      <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  const featuredVideo = videos[0];
+  const episodes = videos;
+
+  const handleWatchClick = (videoId: string) => {
+    if (!profile) {
+      setShowLoginModal(true);
+    } else {
+      navigate(`/watch/${videoId}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-dark-bg pt-20 pb-20">
+      {featuredVideo ? (
+        <div className="relative w-full h-[70vh] md:h-[85vh] overflow-hidden">
+          <img 
+            src={featuredVideo.thumbnail_url || `https://picsum.photos/seed/${featuredVideo.id}/1920/1080`} 
+            alt={featuredVideo.title}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${featuredVideo.id}/1920/1080`;
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-bg via-dark-bg/40 to-transparent" />
+          
+          <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="max-w-4xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="bg-f1-blue text-white text-[10px] font-black px-2 py-1 rounded-sm uppercase tracking-widest">Destaque</span>
+                <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">{featuredVideo.year} • {featuredVideo.category}</span>
+              </div>
+              <h1 className="text-4xl md:text-7xl font-black mb-6 italic tracking-tighter uppercase leading-tight drop-shadow-2xl">
+                {featuredVideo.title}
+              </h1>
+              <p className="text-gray-300 text-sm md:text-lg mb-8 max-w-2xl font-medium opacity-90 line-clamp-3">
+                {featuredVideo.description}
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-4">
+                {profile ? (
+                  <>
+                    <button 
+                      onClick={() => handleWatchClick(featuredVideo.id)}
+                      className="inline-flex items-center gap-3 bg-white text-black px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+                    >
+                      <Play size={20} fill="currentColor" />
+                      Assistir Agora
+                    </button>
+                    <ReactionButton videoId={featuredVideo.id} profile={profile} />
+                    <button 
+                      onClick={() => document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all"
+                    >
+                      <MessageSquare size={18} />
+                      <span className="text-xs font-bold uppercase tracking-widest">Comentar</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap gap-4">
+                    <button 
+                      onClick={() => setShowLoginModal(true)}
+                      className="inline-flex items-center gap-3 bg-f1-blue text-white px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+                    >
+                      <User size={20} />
+                      Entrar
+                    </button>
+                    <button 
+                      onClick={() => setShowPlansModal(true)}
+                      className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all shadow-xl"
+                    >
+                      <CreditCard size={20} />
+                      Ver Planos
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      ) : (
+        <div className="h-[40vh] flex items-center justify-center text-gray-500 font-bold uppercase tracking-widest">
+          Nenhum vídeo disponível para esta temporada ainda.
+        </div>
+      )}
+
+      <div className="px-4 md:px-12 mt-12 mb-8">
+        <SeasonSelector 
+          year={year} 
+          availableYears={availableYears} 
+          onSelect={(y) => navigate(`/season/${y}`)} 
+        />
       </div>
+
+      <AdBanner profile={profile} type="discreet" />
+
+      <div className="px-4 md:px-12 mt-12">
+        <h2 className="text-2xl md:text-3xl font-black mb-8 italic tracking-tighter uppercase flex items-center gap-3">
+          <span className="w-2 h-8 bg-f1-blue" />
+          Corridas Disponíveis
+        </h2>
+        
+        <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide snap-x">
+          {episodes.map((video) => (
+            <div 
+              key={video.id}
+              onClick={() => handleWatchClick(video.id)}
+              className="relative flex-shrink-0 w-64 md:w-80 aspect-video bg-dark-card rounded-xl overflow-hidden group transition-all duration-300 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/50 cursor-pointer"
+            >
+              <img 
+                src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/600/338`} 
+                alt={video.title}
+                className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/600/338`;
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-4">
+                <h3 className="text-sm md:text-base font-bold leading-tight group-hover:text-f1-blue transition-colors">{video.title}</h3>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{video.year}</p>
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all">
+                    <Play size={14} fill="currentColor" />
+                  </div>
+                </div>
+              </div>
+              {video.status === 'PREMIUM' && (
+                <div className="absolute top-3 right-3 bg-citrus-yellow text-black text-[8px] font-black px-2 py-1 rounded-sm uppercase tracking-widest shadow-lg">PREMIUM</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {featuredVideo && profile && (
+        <div className="mt-12">
+          <CommentSection videoId={featuredVideo.id} profile={profile} />
+        </div>
+      )}
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoginModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+            >
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <div className="p-0">
+                <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPlansModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlansModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-6xl bg-dark-bg rounded-3xl overflow-y-auto max-h-[90vh] shadow-2xl border border-white/10 p-8 md:p-12"
+            >
+              <button 
+                onClick={() => setShowPlansModal(false)}
+                className="absolute top-6 right-6 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <Checkout isModal />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -850,8 +1555,22 @@ const Maintenance = () => {
 const Watch = ({ profile }: { profile: Profile | null }) => {
   const { id } = useParams();
   const [video, setVideo] = useState<Video | null>(null);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchAvailableYears = async () => {
+      const { data } = await supabase.from('videos').select('year');
+      if (data) {
+        const years = Array.from(new Set(data.map(v => v.year))).sort((a, b) => b - a);
+        setAvailableYears(years);
+      }
+    };
+    fetchAvailableYears();
+  }, []);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -860,53 +1579,89 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
         .select('*')
         .eq('id', id)
         .single();
-      
+
       if (data) {
-        // Check access based on plan and year
-        if (data.status === 'PREMIUM') {
-          if (!profile || profile.subscription_status === 'INACTIVE') {
-            navigate('/checkout');
-            return;
-          }
-
-          // Plan-specific restrictions
-          const year = data.year;
-          const plan = profile.plan;
-
-          if (plan === 'FREE' && year < 2026) {
-             // Free plan only gets current season (assuming 2026 is current)
-             navigate('/checkout');
-             return;
-          }
-
-          if ((plan === 'MONTHLY' || plan === 'MENSAL') && year < 1981) {
-             // Monthly plan gets 1981 onwards
-             navigate('/checkout');
-             return;
-          }
-          
-          // Annual plan gets 1950 onwards (everything)
-        }
         setVideo(data);
       }
       setLoading(false);
     };
     fetchVideo();
-  }, [id, profile, navigate]);
+  }, [id]);
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Carregando player...</div>;
-  if (!video) return <div className="h-screen flex items-center justify-center">Vídeo não encontrado.</div>;
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center bg-dark-bg">
+      <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+  
+  if (!video) return <div className="h-screen flex items-center justify-center bg-dark-bg text-white">Vídeo não encontrado.</div>;
+
+  const hasAccess = () => {
+    if (video.status === 'FREE') return true;
+    if (!profile || profile.subscription_status === 'INACTIVE') return false;
+
+    const year = video.year;
+    const plan = profile.plan;
+
+    if (plan === 'FREE' && year < 2026) return false;
+    if ((plan === 'MONTHLY' || plan === 'MENSAL') && year < 1981) return false;
+    
+    return true;
+  };
+
+  const accessGranted = hasAccess();
 
   return (
     <div className="min-h-screen bg-black pt-20">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8">
-          <iframe 
-            src={video.embed_url} 
-            className="w-full h-full"
-            allowFullScreen
-            title={video.title}
+        <div className="mb-6">
+          <SeasonSelector 
+            year={video.year.toString()} 
+            availableYears={availableYears} 
+            onSelect={(y) => navigate(`/season/${y}`)} 
           />
+        </div>
+
+        <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative">
+          {accessGranted ? (
+            video.embed_url.includes('<iframe') ? (
+              <div 
+                className="w-full h-full"
+                dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
+              />
+            ) : (
+              <iframe 
+                src={video.embed_url} 
+                className="w-full h-full"
+                allowFullScreen
+                title={video.title}
+              />
+            )
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-8 text-center">
+              <Lock size={48} className="text-f1-blue mb-6" />
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter mb-4">Conteúdo Premium</h2>
+              <p className="text-gray-400 max-w-md mb-8 text-sm md:text-base">
+                Este vídeo faz parte do nosso acervo exclusivo. Assine um de nossos planos para ter acesso total.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                {!profile ? (
+                  <button 
+                    onClick={() => setShowLoginModal(true)}
+                    className="bg-f1-blue text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                  >
+                    Entrar para Assistir
+                  </button>
+                ) : null}
+                <button 
+                  onClick={() => setShowPlansModal(true)}
+                  className="bg-white text-black px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+                >
+                  Ver Planos de Assinatura
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex flex-col md:flex-row justify-between gap-8 mb-12">
@@ -916,7 +1671,18 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
               <span className="text-gray-400 text-sm">{video.year}</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-black mb-6 italic tracking-tighter">{video.title}</h1>
-            <p className="text-gray-300 leading-relaxed text-lg">{video.description}</p>
+            <p className="text-gray-300 leading-relaxed text-lg mb-8">{video.description}</p>
+
+            <div className="flex items-center gap-4 mb-12">
+              <ReactionButton videoId={video.id} profile={profile} />
+              <button 
+                onClick={() => document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all"
+              >
+                <MessageSquare size={18} />
+                <span className="text-xs font-bold uppercase tracking-widest">Comentar</span>
+              </button>
+            </div>
           </div>
           
           <div className="w-full md:w-80 bg-dark-card p-6 rounded-xl border border-white/5">
@@ -937,12 +1703,77 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
             </div>
           </div>
         </div>
+
+        <AdBanner profile={profile} />
+
+        {profile && (
+          <div className="mt-12">
+            <CommentSection videoId={video.id} profile={profile} />
+          </div>
+        )}
       </div>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoginModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+            >
+              <button 
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <div className="p-0">
+                <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPlansModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlansModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-6xl bg-dark-bg rounded-3xl overflow-y-auto max-h-[90vh] shadow-2xl border border-white/10 p-8 md:p-12"
+            >
+              <button 
+                onClick={() => setShowPlansModal(false)}
+                className="absolute top-6 right-6 text-gray-500 hover:text-white z-10"
+              >
+                <X size={24} />
+              </button>
+              <Checkout isModal />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-const Login = () => {
+const Login = ({ isModal = false, onLoginSuccess }: { isModal?: boolean, onLoginSuccess?: () => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
@@ -973,7 +1804,11 @@ const Login = () => {
         setError("Credenciais de login inválidas. Se você é um assinante antigo, clique em criar conta com o mesmo e-mail e telefone da sua assinatura.");
       }
     } else {
-      navigate('/');
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else {
+        navigate('/');
+      }
     }
     setLoading(false);
   };
@@ -991,14 +1826,118 @@ const Login = () => {
       password,
       options: {
         data: {
-          phone: phone
+          phone: phone,
+          full_name: email.split('@')[0]
         }
       }
     });
-    if (error) setError(error.message);
-    else navigate('/');
+    if (error) {
+      setError(error.message);
+    } else {
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else {
+        navigate('/');
+      }
+    }
     setLoading(false);
   };
+
+  const content = (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "w-full bg-dark-card/90 backdrop-blur-xl p-8 rounded-2xl border border-white/10 z-10",
+        !isModal && "max-w-md"
+      )}
+    >
+      <div className="text-center mb-8 flex flex-col items-center">
+        <img 
+          src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+          alt="GRIDPLAY" 
+          className="h-12 md:h-16 object-contain mb-4"
+          referrerPolicy="no-referrer"
+        />
+        <p className="text-gray-400 text-sm">
+          {isSignUp ? "Crie sua conta para acessar o acervo" : "Acesse o maior acervo histórico da F1"}
+        </p>
+      </div>
+
+      {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-md text-xs mb-6">{error}</div>}
+
+      <form className="space-y-4" onSubmit={isSignUp ? handleSignUp : handleLogin}>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
+          <input 
+            type="email" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
+            placeholder="seu@email.com"
+            required
+          />
+        </div>
+        
+        {isSignUp && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+          >
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors mb-4"
+              placeholder="(00) 00000-0000"
+              required
+            />
+          </motion.div>
+        )}
+
+        <div>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha</label>
+          <div className="relative">
+            <input 
+              type={showPassword ? "text" : "password"} 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors pr-12"
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <button 
+          type="submit"
+          disabled={loading}
+          className="w-full bg-f1-blue text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 disabled:opacity-50"
+        >
+          {loading ? "Processando..." : (isSignUp ? "Criar Minha Conta" : "Entrar")}
+        </button>
+      </form>
+
+      <div className="mt-8 pt-6 border-t border-white/5 text-center">
+        <button 
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="text-xs font-bold text-gray-400 hover:text-f1-blue transition-colors uppercase tracking-widest"
+        >
+          {isSignUp ? "Já tem uma conta? Faça login" : "Não tem conta? Crie uma agora"}
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  if (isModal) return content;
 
   return (
     <div className="h-screen flex items-center justify-center px-4 relative overflow-hidden">
@@ -1011,231 +1950,143 @@ const Login = () => {
         />
         <div className="absolute inset-0 bg-black/60" />
       </div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-dark-card/90 backdrop-blur-xl p-8 rounded-2xl border border-white/10 z-10"
-      >
-        <div className="text-center mb-8 flex flex-col items-center">
-          <img 
-            src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
-            alt="GRIDPLAY" 
-            className="h-12 md:h-16 object-contain mb-4"
-            referrerPolicy="no-referrer"
-          />
-          <p className="text-gray-400 text-sm">
-            {isSignUp ? "Crie sua conta para acessar o acervo" : "Acesse o maior acervo histórico da F1"}
-          </p>
-        </div>
-
-        {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-md text-xs mb-6">{error}</div>}
-
-        <form className="space-y-4" onSubmit={isSignUp ? handleSignUp : handleLogin}>
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
-              placeholder="seu@email.com"
-              required
-            />
-          </div>
-          
-          {isSignUp && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-            >
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-              <input 
-                type="tel" 
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors mb-4"
-                placeholder="(00) 00000-0000"
-                required
-              />
-            </motion.div>
-          )}
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha</label>
-            <div className="relative">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors pr-12"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-          
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full bg-f1-blue text-white font-black py-4 rounded-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-          >
-            {loading ? "Processando..." : (isSignUp ? "CRIAR CONTA" : "ENTRAR")}
-          </button>
-          
-          <div className="text-center mt-6">
-            <button 
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setError(null);
-              }}
-              className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-4"
-            >
-              {isSignUp ? "Já tem uma conta? Entrar" : "Não tem uma conta? Criar agora"}
-            </button>
-          </div>
-
-          <p className="text-[10px] text-gray-500 text-center mt-4">
-            *O Plano Grátis também requer a criação de uma conta para acesso.
-          </p>
-        </form>
-      </motion.div>
+      {content}
     </div>
   );
 };
 
-const Checkout = () => {
+const Checkout = ({ isModal = false }: { isModal?: boolean }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const navigate = useNavigate();
 
-  return (
-    <div className="min-h-screen bg-black pt-32 pb-20 px-4">
-      <div className="max-w-6xl mx-auto text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Lock size={48} className="text-citrus-yellow mx-auto mb-6" />
-          <h1 className="text-4xl md:text-7xl font-black mb-6 italic tracking-tighter uppercase leading-none">Escolha seu Plano</h1>
-          <p className="text-gray-400 text-sm md:text-xl mb-12 max-w-2xl mx-auto font-medium">
-            Desbloqueie o acesso total ao maior acervo de Fórmula 1 do mundo. Escolha o plano que melhor se adapta à sua paixão.
-          </p>
-        </motion.div>
-        
-        {/* Billing Toggle */}
-        <div className="flex items-center bg-white/5 p-1.5 rounded-full mb-16 border border-white/10 w-fit mx-auto backdrop-blur-md">
-          <button 
-            onClick={() => setBillingCycle('monthly')}
-            className={cn(
-              "px-10 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
-              billingCycle === 'monthly' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
-            )}
-          >
-            Mensal
-          </button>
-          <button 
-            onClick={() => setBillingCycle('annual')}
-            className={cn(
-              "px-10 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
-              billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
-            )}
-          >
-            Anual
-          </button>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-8 w-full max-w-6xl mx-auto">
-          {/* Free Plan (Always Visible as secondary) */}
-          <div className="bg-dark-card/50 p-10 rounded-[2.5rem] border border-white/5 flex flex-col backdrop-blur-sm hover:border-white/10 transition-colors w-full md:w-[380px]">
-            <div className="mb-8">
-              <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
-            </div>
-            <div className="text-4xl font-black text-white mb-8 uppercase tracking-tighter italic">GRÁTIS</div>
-            <ul className="text-xs text-gray-400 space-y-4 mb-12 flex-1 font-medium">
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Comunidade no Telegram</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas corridas em HD</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas temporada atual (2024+)</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> R$10 / temporada avulsa</li>
-            </ul>
-            <button 
-              onClick={() => navigate('/')}
-              className="w-full border border-white/10 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-            >
-              Manter Plano Atual
-            </button>
-          </div>
-
-          {billingCycle === 'monthly' ? (
-            /* Monthly */
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-gradient-to-br from-f1-blue/10 to-black p-10 rounded-[2.5rem] border border-f1-blue/30 flex flex-col shadow-[0_0_60px_rgba(38,169,224,0.15)] w-full md:w-[380px]"
-            >
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
-                <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">Acesso Premium</p>
-              </div>
-              <div className="text-4xl font-black text-white mb-8 italic tracking-tighter">
-                R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
-              </div>
-              <ul className="text-xs text-gray-300 space-y-4 mb-12 flex-1 font-medium">
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 - Atual</li>
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Filmes, Séries e Documentários</li>
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios em todo o site</li>
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
-              </ul>
-              <button className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20">
-                Assinar Mensal
-              </button>
-            </motion.div>
-          ) : (
-            /* Annual */
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full md:w-[380px]"
-            >
-              <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
-                <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">Acesso Total</p>
-              </div>
-              <div className="mb-8">
-                <div className="text-xs text-gray-500 line-through font-bold mb-1">12x R$ 28,00</div>
-                <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">
-                  12x R$ 14,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter">R$ 140,00 à vista (2 meses grátis)</p>
-              </div>
-              <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Tudo do plano mensal</li>
-                <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
-              </ul>
-              <button className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20">
-                Assinar Anual
-              </button>
-            </motion.div>
-          )}
-        </div>
-
+  const content = (
+    <div className={cn("w-full max-w-6xl mx-auto", !isModal && "pt-32 pb-20 px-4")}>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-16"
+      >
+        <h1 className="text-4xl md:text-6xl font-black mb-6 italic tracking-tighter uppercase">Escolha seu Plano</h1>
+        <p className="text-gray-400 max-w-2xl mx-auto font-medium">
+          Tenha acesso ilimitado ao maior acervo histórico da Fórmula 1. Assista a todas as corridas, documentários e conteúdos exclusivos.
+        </p>
+      </motion.div>
+      
+      {/* Billing Toggle */}
+      <div className="flex items-center bg-white/5 p-1.5 rounded-full mb-16 border border-white/10 w-fit mx-auto backdrop-blur-md">
         <button 
-          onClick={() => navigate('/')}
-          className="mt-16 text-gray-500 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors flex items-center gap-2 mx-auto"
+          onClick={() => setBillingCycle('monthly')}
+          className={cn(
+            "px-10 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
+            billingCycle === 'monthly' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
+          )}
         >
-          <ChevronLeft size={16} /> Voltar para a Home
+          Mensal
+        </button>
+        <button 
+          onClick={() => setBillingCycle('annual')}
+          className={cn(
+            "px-10 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300",
+            billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
+          )}
+        >
+          Anual
         </button>
       </div>
+
+      <div className="flex flex-wrap justify-center gap-8 w-full">
+        {/* Free Plan (Always Visible as secondary) */}
+        <div className="bg-dark-card/50 p-10 rounded-[2.5rem] border border-white/5 flex flex-col backdrop-blur-sm hover:border-white/10 transition-colors w-full md:w-[380px]">
+          <div className="mb-8">
+            <h3 className="text-xl font-bold mb-1">Plano Free</h3>
+            <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
+          </div>
+          <div className="text-4xl font-black text-white mb-8 uppercase tracking-tighter italic">GRÁTIS</div>
+          <ul className="text-xs text-gray-400 space-y-4 mb-12 flex-1 font-medium">
+            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Comunidade no Telegram</li>
+            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas corridas em HD</li>
+            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas temporada atual (2024+)</li>
+            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> R$10 / temporada avulsa</li>
+          </ul>
+          <button 
+            onClick={() => navigate('/')}
+            className="w-full border border-white/10 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
+          >
+            Manter Plano Atual
+          </button>
+        </div>
+
+        {billingCycle === 'monthly' ? (
+          /* Monthly */
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-gradient-to-br from-f1-blue/10 to-black p-10 rounded-[2.5rem] border border-f1-blue/30 flex flex-col shadow-[0_0_60px_rgba(38,169,224,0.15)] w-full md:w-[380px]"
+          >
+            <div className="mb-8">
+              <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
+              <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">Acesso Premium</p>
+            </div>
+            <div className="text-4xl font-black text-white mb-8 italic tracking-tighter">
+              R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+            </div>
+            <ul className="text-xs text-gray-300 space-y-4 mb-12 flex-1 font-medium">
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 - Atual</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Filmes, Séries e Documentários</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios em todo o site</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
+            </ul>
+            <button className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20">
+              Assinar Mensal
+            </button>
+          </motion.div>
+        ) : (
+          /* Annual */
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full md:w-[380px]"
+          >
+            <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
+            <div className="mb-8">
+              <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
+              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">Acesso Total</p>
+            </div>
+            <div className="mb-8">
+              <div className="text-xs text-gray-500 line-through font-bold mb-1">12x R$ 28,00</div>
+              <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">
+                12x R$ 14,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter">R$ 140,00 à vista (2 meses grátis)</p>
+            </div>
+            <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Tudo do plano mensal</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
+            </ul>
+            <button className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20">
+              Assinar Anual
+            </button>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isModal) return content;
+
+  return (
+    <div className="min-h-screen bg-dark-bg relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://picsum.photos/seed/f1-plans/1920/1080?blur=10" 
+          className="w-full h-full object-cover opacity-20"
+          alt="Background"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
+      </div>
+      {content}
     </div>
   );
 };
@@ -1794,6 +2645,7 @@ export default function App() {
             <Route path="/watch/:id" element={<Watch profile={profile} />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/account" element={<Account profile={profile} />} />
+            <Route path="/season/:year" element={<SeasonPage profile={profile} />} />
             <Route path="/admin" element={<AdminPanel profile={profile} />} />
             <Route path="/maintenance" element={<Maintenance />} />
             <Route path="*" element={<Navigate to="/" />} />

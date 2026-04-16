@@ -27,3 +27,24 @@ export type Video = {
   thumbnail_url: string;
   created_at: string;
 };
+
+export type Reaction = {
+  id: string;
+  user_id: string;
+  video_id: string;
+  type: 'like' | 'love';
+  created_at: string;
+};
+
+export type Comment = {
+  id: string;
+  user_id: string;
+  video_id: string;
+  content: string;
+  parent_id: string | null;
+  created_at: string;
+  f1profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+};
