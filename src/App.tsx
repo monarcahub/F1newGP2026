@@ -1740,8 +1740,11 @@ const Maintenance = () => {
 
   useEffect(() => {
     const fetchTargetDate = async () => {
-      // Clear legacy localStorage to avoid confusion
+      // Clear legacy localStorage
       localStorage.removeItem('maintenance_target_date');
+      
+      // Default fixed fallback (e.g., June 30, 2026) to avoid "resetting" on every F5
+      const FIXED_FALLBACK = new Date('2026-06-30T00:00:00Z');
       
       try {
         const { data, error } = await supabase
@@ -1751,24 +1754,22 @@ const Maintenance = () => {
           .maybeSingle();
 
         if (error) {
-          console.error("Supabase error fetching date:", error);
-          throw error;
+          // If error 205 (Schema cache), we catch it here
+          console.error("Supabase API cannot find the table yet. Error:", error.message);
+          setTargetDate(FIXED_FALLBACK);
+          return;
         }
 
         if (data && data.value) {
-          console.log("Maintenance target date fetched from Supabase:", data.value);
+          console.log("Success! Date fetched from Supabase:", data.value);
           setTargetDate(new Date(data.value));
         } else {
-          console.warn("No date found in Supabase site_settings for 'maintenance_end_date'. Using default fallback.");
-          const fallback = new Date();
-          fallback.setDate(fallback.getDate() + 7);
-          setTargetDate(fallback);
+          console.warn("Table exists but key 'maintenance_end_date' is missing. Using fixed fallback.");
+          setTargetDate(FIXED_FALLBACK);
         }
       } catch (err) {
-        console.error("Failed to fetch maintenance date from DB:", err);
-        const fallback = new Date();
-        fallback.setDate(fallback.getDate() + 7);
-        setTargetDate(fallback);
+        console.error("Connection failed. Using fixed fallback:", err);
+        setTargetDate(FIXED_FALLBACK);
       }
     };
 
