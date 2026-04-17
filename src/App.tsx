@@ -24,7 +24,11 @@ import {
   MessageSquare,
   Send,
   ChevronDown,
-  CreditCard
+  CreditCard,
+  History,
+  Download,
+  Trophy,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, type Profile, type Video, type Reaction, type Comment } from './lib/supabase';
@@ -41,53 +45,172 @@ declare global {
 
 const Navbar = ({ profile }: { profile: Profile | null }) => {
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
+  const menuItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Temporada 2026', path: '/season/2026' },
+    { label: 'Documentários', path: '/maintenance' },
+    { label: 'Arquivos', path: '/maintenance' },
+  ];
+
+  if (profile?.role === 'admin') {
+    menuItems.push({ label: 'Painel Admin', path: '/admin' });
+  }
+
   return (
-    <nav className="fixed top-0 w-full z-50 bg-gradient-to-b from-black/80 to-transparent px-4 md:px-12 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-8">
-        <Link to="/maintenance" className="flex items-center">
-          <img 
-            src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
-            alt="GRIDPLAY" 
-            className="h-8 md:h-10 object-contain"
-            referrerPolicy="no-referrer"
-          />
-        </Link>
-        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-300">
-          <Link to="/" className="hover:text-white transition-colors">Home</Link>
-          <Link to="/season/2026" className="hover:text-white transition-colors">Temporada 2026</Link>
-          <Link to="/maintenance" className="hover:text-white transition-colors">Décadas</Link>
-          <Link to="/maintenance" className="hover:text-white transition-colors">Documentários</Link>
-          <Link to="/maintenance" className="hover:text-white transition-colors">Arquivos</Link>
-          {profile?.role === 'admin' && (
-            <Link to="/admin" className="text-citrus-yellow hover:opacity-80 transition-opacity">Painel Admin</Link>
+    <>
+      <nav className="fixed top-0 w-full z-50 bg-gradient-to-b from-black/90 via-black/40 to-transparent px-4 md:px-12 py-4 grid grid-cols-2 md:grid-cols-3 items-center backdrop-blur-sm md:backdrop-blur-none border-b border-white/5 md:border-none">
+        {/* Left Section: Mobile Menu + Logo */}
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="md:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+          
+          <Link to="/" className="flex items-center">
+            <img 
+              src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+              alt="GRIDPLAY" 
+              className="h-7 md:h-10 object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </Link>
+        </div>
+
+        {/* Center Section: Main Desktop Menu */}
+        <div className="hidden md:flex justify-center">
+          <div className="flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-gray-400">
+            {menuItems.map((item) => (
+              <Link 
+                key={item.path + item.label} 
+                to={item.path} 
+                className="hover:text-white transition-colors relative group py-2"
+              >
+                {item.label}
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-f1-blue transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Section: Auth Action */}
+        <div className="flex items-center justify-end gap-3 md:gap-4">
+          {/* Desktop Search - Hidden on mobile as per request */}
+          <button className="hidden md:block text-gray-400 hover:text-white p-2">
+            <Search size={20} />
+          </button>
+
+          {profile ? (
+            <div className="flex items-center gap-2 md:gap-4">
+              <Link to="/account" className="text-gray-300 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-all">
+                <User size={18} />
+                <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Minha Conta</span>
+              </Link>
+              <button 
+                onClick={handleLogout} 
+                className="text-gray-400 hover:text-red-500 transition-colors p-2"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <Link to="/login" className="hidden md:block text-white text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Entrar</Link>
+              <Link 
+                to="/login" 
+                className="bg-white text-black px-4 md:px-6 py-2 rounded-sm text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors"
+              >
+                Assine Agora
+              </Link>
+            </div>
           )}
         </div>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <button className="text-gray-300 hover:text-white"><Search size={20} /></button>
-        {profile ? (
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:inline text-xs text-gray-400">{profile.email}</span>
-            <Link to="/account" className="text-gray-300 hover:text-white flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-              <User size={18} />
-              <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:inline">Minha Conta</span>
-            </Link>
-            <button onClick={handleLogout} className="text-gray-300 hover:text-white"><LogOut size={20} /></button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="text-white text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Entrar</Link>
-            <Link to="/login" className="bg-white text-black px-6 py-2 rounded-sm text-sm font-black uppercase tracking-widest hover:bg-gray-200 transition-colors">Assine Agora</Link>
-          </div>
+      </nav>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] md:hidden"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 left-0 bottom-0 w-[80%] max-w-xs bg-dark-bg border-r border-white/10 z-[70] md:hidden p-8 flex flex-col shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-12">
+                <img 
+                  src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+                  alt="GRIDPLAY" 
+                  className="h-7 object-contain"
+                  referrerPolicy="no-referrer"
+                />
+                <button onClick={() => setIsMobileMenuOpen(false)} className="text-white">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-8 flex-grow">
+                {menuItems.map((item) => (
+                  <Link 
+                    key={item.label} 
+                    to={item.path} 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-lg font-black italic uppercase tracking-tighter hover:text-f1-blue transition-colors flex items-center justify-between group"
+                  >
+                    {item.label}
+                    <ChevronRight size={20} className="text-gray-600 group-hover:text-f1-blue" />
+                  </Link>
+                ))}
+                
+                {/* ENTRAR as last item in mobile menu if not logged in */}
+                {!profile && (
+                  <Link 
+                    to="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="mt-4 pt-8 border-t border-white/10 text-lg font-black italic uppercase tracking-tighter text-citrus-yellow hover:opacity-80 transition-opacity flex items-center justify-between group"
+                  >
+                    ENTRAR
+                    <ChevronRight size={20} />
+                  </Link>
+                )}
+              </div>
+
+              {profile && (
+                <div className="mt-auto pt-8 border-t border-white/10 space-y-6">
+                  <div className="flex items-center gap-4 text-gray-400">
+                    <User size={20} />
+                    <span className="text-sm font-bold uppercase tracking-widest truncate">{profile.email}</span>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-4 text-red-500 font-bold uppercase tracking-widest text-sm"
+                  >
+                    <LogOut size={20} />
+                    Sair da Conta
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
-      </div>
-    </nav>
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -704,146 +827,304 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Hero Section with Background Image */}
+      {/* Hero Section with Grid Background (Refined MAX Style) */}
       <div className="relative h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
+        {/* Cinematic Grid Background */}
+        <div className="absolute inset-0 z-0">
           <img 
             src="https://i.ibb.co/PZyYkyPt/capa-bh-hero-section-GRIDPLAY-F1.jpg" 
-            alt="GridPlay Hero" 
-            className="w-full h-full object-cover"
+            alt="GridPlay Library" 
+            className="w-full h-full object-cover scale-105 opacity-60"
             referrerPolicy="no-referrer"
           />
+          {/* Lighter gradients to see the titles better (as requested) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black" />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black" />
 
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative z-10 max-w-4xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+          className="relative z-10 max-w-4xl flex flex-col items-center"
         >
-          <img 
-            src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
-            alt="GRIDPLAY" 
-            className="h-16 md:h-24 object-contain mx-auto mb-8 drop-shadow-[0_0_30px_rgba(38,169,224,0.3)]"
-            referrerPolicy="no-referrer"
-          />
-          <h1 className="text-4xl md:text-8xl font-black mb-6 italic tracking-tighter uppercase leading-none">
-            O Maior Acervo de <span className="text-f1-blue">F1</span> do Mundo
-          </h1>
-          <p className="text-gray-300 text-sm md:text-xl mb-10 max-w-2xl mx-auto font-medium opacity-90">
-            De 1950 a 2026. Todas as corridas, documentários e bastidores da maior categoria do automobilismo mundial em um só lugar.
-          </p>
+          <span className="text-white font-black tracking-[0.4em] text-[10px] md:text-xs uppercase mb-8 drop-shadow-md">
+            OFERTA POR TEMPO LIMITADO
+          </span>
           
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <Link to="/login" className="w-full md:w-auto bg-citrus-yellow text-black px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-lg shadow-citrus-yellow/20">
-              Assinar Agora
-            </Link>
-            <Link to="/login" className="w-full md:w-auto bg-white/10 text-white px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all backdrop-blur-md">
-              Experimentar Grátis
-            </Link>
+          <h1 className="text-4xl md:text-6xl font-black mb-8 italic tracking-tighter uppercase leading-tight text-white max-w-3xl">
+            O MAIOR ACERVO DE <span className="text-f1-blue">F1</span> DO BRASIL
+          </h1>
+          
+          <div className="flex flex-col items-center mb-10">
+            <span className="text-white/80 text-[10px] uppercase font-black tracking-widest mb-2">A PARTIR DE</span>
+            <div className="flex items-start text-white">
+              <span className="text-2xl font-black mt-2 mr-1">R$</span>
+              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">14,95</span>
+              <span className="text-xl font-bold mt-4 md:mt-6 ml-1 opacity-70">/MÊS*</span>
+            </div>
+            <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">SÓ PARA PLANOS ANUAIS</span>
           </div>
+          
+          <div className="flex flex-col items-center gap-6">
+            <Link 
+              to="/login" 
+              className="bg-white text-black px-20 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-2xl"
+            >
+              ASSINE AGORA
+            </Link>
+            
+            <p className="text-[9px] md:text-[10px] text-white/40 max-w-md font-bold uppercase tracking-wider">
+              *Oferta válida até {promoDate}. Desconto válido para o primeiro ano. <a href="#" className="underline">Aplicam termos</a>.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Scroll Indicator */}
+        <motion.div 
+          animate={{ y: [0, 8, 0] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/20"
+        >
+          <ChevronDown size={24} />
         </motion.div>
       </div>
 
-      <AdBanner profile={null} type="discreet" adSlot="2704581234" />
-
-      {/* Plans Section */}
-      <div className="py-24 px-4 md:px-12 bg-black flex flex-col items-center">
-        <h2 className="text-3xl md:text-5xl font-black mb-8 italic tracking-tighter uppercase text-center">Escolha o melhor plano para você</h2>
-        
-        {/* Billing Toggle */}
-        <div className="flex items-center bg-white/5 p-1 rounded-full mb-16 border border-white/10">
-          <button 
-            onClick={() => setBillingCycle('monthly')}
-            className={cn(
-              "px-8 py-2 rounded-full text-sm font-bold uppercase tracking-widest transition-all",
-              billingCycle === 'monthly' ? "bg-white text-black" : "text-gray-400 hover:text-white"
-            )}
-          >
-            Mensal
-          </button>
-          <button 
-            onClick={() => setBillingCycle('annual')}
-            className={cn(
-              "px-8 py-2 rounded-full text-sm font-bold uppercase tracking-widest transition-all",
-              billingCycle === 'annual' ? "bg-white text-black" : "text-gray-400 hover:text-white"
-            )}
-          >
-            Anual
-          </button>
-        </div>
-
-        <div className="flex flex-wrap justify-center gap-8 w-full max-w-6xl mx-auto">
-          {/* Free Plan */}
-          <div className="p-8 rounded-[2rem] border border-white/5 bg-dark-card flex flex-col hover:border-white/10 transition-all group w-full md:w-[350px]">
-            <div className="mb-8">
-              <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-              <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
-            </div>
-            <div className="text-4xl font-black mb-8 uppercase tracking-tighter text-white italic">GRÁTIS</div>
-            <ul className="space-y-4 mb-10 flex-1">
-              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Comunidade Aberta no Telegram</li>
-              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Temporada Atual (2026+) em HD</li>
-              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Notícias e Destaques em Tempo Real</li>
-              <li className="flex items-center gap-3 text-xs text-gray-400 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Upgrade para Premium a qualquer momento</li>
-            </ul>
-            <Link to="/login" className="w-full border border-white/10 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-center hover:bg-white/5 transition-all">COMEÇAR GRÁTIS</Link>
+      {/* Feature Section: What you find inside */}
+      <div className="py-24 px-4 md:px-12 bg-black border-y border-white/5">
+        <div className="max-w-7xl mx-auto space-y-20">
+          <div className="text-center space-y-2">
+            <span className="text-f1-blue font-black tracking-[0.4em] text-[10px] uppercase">Muito mais que corridas</span>
+            <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter uppercase">O QUE VOCÊ ENCONTRA</h2>
           </div>
 
-          {billingCycle === 'monthly' ? (
-            /* Monthly Plan */
-            <div className="p-8 rounded-[2rem] border border-f1-blue/30 bg-white/5 flex flex-col shadow-[0_0_50px_rgba(38,169,224,0.1)] relative overflow-hidden w-full md:w-[350px]">
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
-                <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">Acesso Premium</p>
-              </div>
-              <div className="text-4xl font-black mb-8 italic tracking-tighter">R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span></div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-center gap-3 text-xs text-gray-300 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 a atual</li>
-                <li className="flex items-center gap-3 text-xs text-gray-300 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Filmes, séries e documentários</li>
-                <li className="flex items-center gap-3 text-xs text-gray-300 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios em todo o site</li>
-                <li className="flex items-center gap-3 text-xs text-gray-300 font-medium"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
-              </ul>
-              <Link to="/login" className="w-full bg-f1-blue text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity shadow-lg shadow-f1-blue/20">SELECIONAR</Link>
-            </div>
-          ) : (
-            /* Annual Plan */
-            <div className="p-8 rounded-[2rem] border border-citrus-yellow/30 bg-white/5 flex flex-col relative overflow-hidden scale-105 z-10 shadow-[0_0_60px_rgba(255,230,0,0.15)] w-full md:w-[350px]">
-              <div className="absolute top-4 right-6 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
-                <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">Acesso Total</p>
-              </div>
-              <div className="mb-8">
-                <div className="text-xs text-gray-500 line-through font-bold mb-1">12x R$ 28,00</div>
-                <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">12x R$ 14,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span></div>
-                <div className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-tighter">R$ 140,00 à vista (2 meses grátis)</div>
-              </div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-center gap-3 text-xs text-gray-200 font-medium"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 até atual</li>
-                <li className="flex items-center gap-3 text-xs text-gray-200 font-medium"><ChevronRight size={14} className="text-citrus-yellow" /> Tudo do plano mensal</li>
-                <li className="flex items-center gap-3 text-xs text-gray-200 font-medium"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
-              </ul>
-              <Link to="/login" className="w-full bg-citrus-yellow text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity shadow-lg shadow-citrus-yellow/20">SELECIONAR</Link>
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "ACERVO HISTÓRICO",
+                desc: "Todo o conteúdo da F1 de 1950 até a temporada atual. Corridas completas separadas por ano e GP.",
+                icon: <History size={32} className="text-f1-blue" />
+              },
+              {
+                title: "ORIGINAIS & DOCS",
+                desc: "Séries exclusivas, documentários biográficos e bastidores que você não encontra em nenhum outro lugar.",
+                icon: <Film size={32} className="text-f1-blue" />
+              },
+              {
+                title: "DOWNLOADS LIBERADOS",
+                desc: "Baixe suas corridas favoritas para assistir offline no avião ou onde estiver (Plano Premium).",
+                icon: <Download size={32} className="text-f1-blue" />
+              }
+            ].map((feature, i) => (
+              <motion.div 
+                key={i}
+                whileHover={{ y: -5 }}
+                className="p-8 rounded-[2rem] bg-dark-card border border-white/5 hover:border-f1-blue/20 transition-all text-center space-y-6"
+              >
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-f1-blue/5 flex items-center justify-center border border-f1-blue/10">
+                  {feature.icon}
+                </div>
+                <h3 className="text-lg font-black italic tracking-tighter uppercase">{feature.title}</h3>
+                <p className="text-gray-400 text-xs font-medium leading-relaxed opacity-70">{feature.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Legal Footer */}
-        <div className="mt-16 max-w-4xl text-center">
-          <p className="text-[10px] text-gray-500 leading-relaxed">
-            Acesso é dado exclusivamente no Telegram e Downloads podem ter restrições em algumas categorias de conteúdo. 
-            Economia calculada com base no preço da assinatura anual vs. a assinatura mensal regular ao longo de 12 meses. 
-            Promoção válida de 2 de abril a {promoDate}, somente para planos anuais. 
-            <a href="#" className="underline hover:text-gray-300 ml-1">Aplicam-se os termos e condições</a>.
-          </p>
+      {/* Plans Section */}
+      <div className="py-24 px-4 md:px-12 relative">
+        <div className="relative z-10 flex flex-col items-center">
+          <h2 className="text-3xl md:text-5xl font-black mb-4 italic tracking-tighter uppercase text-center">
+            ESCOLHA O MELHOR PLANO PARA VOCÊ
+          </h2>
+          <span className="text-gray-500 mb-10 text-[10px] font-black uppercase tracking-[0.3em]">ECONOMIZE ATE 50%</span>
+          
+          {/* Billing Cycle Toggle */}
+          <div className="flex items-center bg-white/5 p-1 rounded-full mb-16 border border-white/10">
+            <button 
+              onClick={() => setBillingCycle('monthly')}
+              className={cn(
+                "px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
+                billingCycle === 'monthly' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
+              )}
+            >
+              MENSAL
+            </button>
+            <button 
+              onClick={() => setBillingCycle('annual')}
+              className={cn(
+                "px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
+                billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
+              )}
+            >
+              ANUAL
+            </button>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-6 w-full max-w-6xl mx-auto">
+            {/* Free */}
+            <div className="p-8 rounded-[2.5rem] border border-white/5 bg-dark-card w-full md:w-[320px] flex flex-col transition-all hover:border-white/10 shrink-0">
+               <div className="h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
+                  <div className="h-full bg-f1-blue w-1/3" />
+               </div>
+              <div className="mb-6 text-white text-left">
+                <h3 className="text-xl font-bold mb-1">Plano Free</h3>
+                <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">ACESSO BÁSICO COM ANÚNCIOS</p>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
+                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                  Comunidade no Telegram
+                </li>
+                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
+                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                  Apenas corridas em HD
+                </li>
+                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
+                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                  Apenas temporada atual (2024+)
+                </li>
+                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
+                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                  R$10 / temporada avulsa
+                </li>
+              </ul>
+              <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">GRÁTIS</div>
+              <Link to="/login" className="w-full bg-white/10 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:bg-white/20 transition-all uppercase">MANTER PLANO ATUAL</Link>
+            </div>
+
+            {/* Monthly / Standard */}
+            {billingCycle === 'monthly' && (
+              <div className="p-8 rounded-[2.5rem] border border-f1-blue/20 bg-white/5 w-full md:w-[320px] flex flex-col shadow-2xl relative shrink-0">
+                 <div className="h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
+                    <div className="h-full bg-f1-blue w-2/3" />
+                 </div>
+                <div className="mb-6 text-white text-left">
+                  <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
+                  <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">ACESSO PREMIUM</p>
+                </div>
+                <ul className="space-y-4 mb-10 flex-1">
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Acervo 1981 - Atual
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Filmes, Séries e Documentários
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Sem anúncios em todo o site
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Canal VIP Telegram
+                  </li>
+                </ul>
+                <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">
+                  R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+                </div>
+                <Link to="/login" className="w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity">ASSINAR MENSAL</Link>
+              </div>
+            )}
+
+            {/* Platinum / Anual */}
+            {billingCycle === 'annual' && (
+              <div className="p-8 rounded-[2.5rem] border border-citrus-yellow/30 bg-white/5 w-full md:w-[320px] flex flex-col relative shrink-0 overflow-hidden">
+                 <div className="absolute top-0 right-0 left-0 h-1 bg-citrus-yellow shadow-[0_0_15px_rgba(255,230,0,0.5)]" />
+                 <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase italic">MELHOR VALOR</div>
+                <div className="mb-6 text-white text-left mt-4">
+                  <h3 className="text-xl font-bold mb-1 text-white">Plano Anual</h3>
+                  <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">ACESSO TOTAL</p>
+                </div>
+                <div className="mb-6 text-left">
+                  <div className="text-gray-500 line-through text-xs font-bold mb-1">12x R$ 28,00</div>
+                  <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter uppercase">
+                    12x R$ 14,00<span className="text-xs font-normal text-gray-500 not-italic ml-1">/mês</span>
+                  </div>
+                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">R$ 140,00 À VISTA (2 MESES GRÁTIS)</div>
+                </div>
+                <ul className="space-y-4 mb-10 flex-1 text-left">
+                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
+                    Acervo Completo 1950 - Atual
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
+                    Tudo do plano mensal
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
+                    Prioridade em novos conteúdos
+                  </li>
+                </ul>
+                <Link to="/login" className="w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity">ASSINAR ANUAL</Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+
+      {/* Community Section: VIP Telegram */}
+      <div className="py-24 bg-gradient-to-b from-black to-dark-bg border-t border-white/5">
+        <div className="max-w-6xl mx-auto px-4 md:px-0">
+          <div className="bg-gradient-to-br from-f1-blue/10 via-white/5 to-transparent p-12 md:p-20 rounded-[3rem] border border-white/10 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
+             {/* Decorative Elements */}
+             <div className="absolute -top-20 -right-20 w-80 h-80 bg-f1-blue rounded-full blur-[150px] opacity-20" />
+             
+             <div className="flex-1 space-y-8 z-10 text-center md:text-left text-white">
+                <span className="inline-flex items-center gap-2 bg-[#24A1DE]/20 text-[#24A1DE] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                   <div className="w-1.5 h-1.5 bg-[#24A1DE] rounded-full animate-pulse" /> CANAL VIP TELEGRAM
+                </span>
+                <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase leading-none">
+                   SUA COMUNIDADE <br /> DE AUTOMOBILISMO
+                </h2>
+                <p className="text-gray-400 md:text-lg font-medium leading-relaxed opacity-80 max-w-xl">
+                   Não é apenas sobre assistir. É sobre viver a F1. Tenha suporte prioritário e discuta cada Grande Prêmio com quem entende do assunto.
+                </p>
+                <div className="grid grid-cols-2 gap-8 py-4 border-y border-white/10">
+                   <div>
+                      <div className="text-3xl font-black text-white italic">1981+</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Corridas no Acervo</div>
+                   </div>
+                   <div>
+                      <div className="text-3xl font-black text-white italic">24/7</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Comunidade Ativa</div>
+                   </div>
+                </div>
+             </div>
+
+             <div className="shrink-0 z-10 w-full md:w-auto">
+               <div className="relative group">
+                  <div className="absolute inset-0 bg-[#24A1DE] rounded-full blur-[30px] opacity-20 group-hover:opacity-40 transition-opacity" />
+                  <a 
+                    href="https://t.me/+D15DI9e0ckc0NTQx" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative flex flex-col items-center bg-white text-black p-10 md:p-12 rounded-[3.5rem] space-y-4 hover:scale-105 transition-all shadow-2xl"
+                  >
+                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" className="w-16 h-16" alt="Telegram" />
+                     <div className="text-center font-black uppercase tracking-widest text-[10px]">
+                        Entrar no Grupo <br /> <span className="text-f1-blue">GRATUITO</span>
+                     </div>
+                  </a>
+               </div>
+             </div>
+          </div>
         </div>
       </div>
 
       <HighlightsSlider />
-
       <FAQ />
+      
+      {/* Mini Legal Footer */}
+      <footer className="py-20 border-t border-white/5 text-center px-4">
+        <p className="text-[10px] text-gray-600 max-w-2xl mx-auto leading-relaxed uppercase tracking-widest font-bold">
+          © 2026 GRIDPLAY. Este site não é oficial e não está associado de forma alguma ao grupo de empresas da Formula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX e marcas relacionadas são marcas comerciais da Formula One Licensing B.V.
+        </p>
+      </footer>
     </div>
   );
 };
@@ -876,6 +1157,9 @@ const Home = ({ profile }: { profile: Profile | null }) => {
     </div>
   );
 
+  // Re-enable landing page as home for visitors as requested
+  if (!profile) return <LandingPage />;
+
   const featured = videos[0];
   const categories = Array.from(new Set(videos.map(v => v.category))) as string[];
 
@@ -888,194 +1172,211 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   };
 
   return (
-    <div className="min-h-screen pb-20 pt-20 md:pt-24 bg-dark-bg">
-      {/* Hero */}
+    <div className="min-h-screen bg-black overflow-x-hidden">
+      {/* Hero Section - The "MAX" Experience */}
       {featured && (
-        <div className="relative h-[60vh] md:h-[75vh] w-full overflow-hidden rounded-b-[2rem] md:rounded-b-[3rem] mx-auto max-w-[1440px]">
+        <div className="relative h-screen md:h-[90vh] w-full overflow-hidden">
           <img 
-            src={featured.thumbnail_url || `https://picsum.photos/seed/hero/1920/1080`} 
+            src={featured.thumbnail_url || `https://i.ibb.co/PZyYkyPt/capa-bh-hero-section-GRIDPLAY-F1.jpg`} 
             className="w-full h-full object-cover"
-            alt="Featured"
+            alt="Featured Content"
             referrerPolicy="no-referrer"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = `https://picsum.photos/seed/hero/1920/1080`;
+              (e.target as HTMLImageElement).src = `https://i.ibb.co/PZyYkyPt/capa-bh-hero-section-GRIDPLAY-F1.jpg`;
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
-          <div className="absolute inset-0 streaming-gradient" />
           
-          <div className="absolute bottom-12 left-4 md:left-12 max-w-2xl">
-            <span className="text-citrus-yellow font-black tracking-widest text-[10px] md:text-xs mb-2 block uppercase">Destaque da Semana</span>
-            <h1 className="text-3xl md:text-6xl font-black mb-4 italic tracking-tighter uppercase leading-none">{featured.title}</h1>
-            <p className="text-gray-300 text-xs md:text-base mb-8 line-clamp-3 font-medium opacity-90">{featured.description}</p>
-            
-            <div className="flex flex-wrap items-center gap-4">
-              {profile ? (
-                <>
-                  <button 
-                    onClick={() => handleWatchClick(featured.id)}
-                    className="bg-white text-black px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-transform shadow-xl"
-                  >
-                    <Play size={20} fill="black" /> Assistir Agora
-                  </button>
-                  <button className="bg-gray-500/30 text-white px-8 py-4 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-gray-500/50 transition-colors backdrop-blur-md">
-                    <Info size={18} /> Detalhes
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-wrap gap-4">
-                  <button 
-                    onClick={() => setShowLoginModal(true)}
-                    className="inline-flex items-center gap-3 bg-f1-blue text-white px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
-                  >
-                    <User size={20} />
-                    Entrar
-                  </button>
-                  <button 
-                    onClick={() => setShowPlansModal(true)}
-                    className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 px-10 py-4 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all shadow-xl"
-                  >
-                    <CreditCard size={20} />
-                    Ver Planos
-                  </button>
-                </div>
-              )}
-            </div>
+          {/* Gradients to match MAX style */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent" />
+          <div className="absolute inset-0 streaming-gradient opacity-60" />
+          
+          <div className="absolute bottom-0 left-0 w-full p-6 md:p-16 z-20">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="max-w-4xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="bg-citrus-yellow text-black text-[10px] md:text-xs font-black px-3 py-1 rounded-full uppercase italic tracking-widest shadow-lg">Destaque Premium</span>
+                <span className="text-gray-400 text-xs md:text-sm font-bold uppercase tracking-widest">{featured.year} • {featured.category}</span>
+              </div>
+              
+              <h1 className="text-4xl md:text-8xl font-black mb-6 italic tracking-tighter uppercase leading-[0.9] drop-shadow-2xl">
+                {featured.title}
+              </h1>
+              
+              <p className="text-gray-300 text-sm md:text-xl mb-10 max-w-2xl font-medium opacity-90 line-clamp-3 leading-relaxed">
+                {featured.description}
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-4">
+                {profile ? (
+                  <>
+                    <button 
+                      onClick={() => handleWatchClick(featured.id)}
+                      className="bg-white text-black px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest flex items-center gap-3 hover:scale-105 transition-transform shadow-xl hover:bg-gray-200"
+                    >
+                      <Play size={20} fill="black" /> Assistir Agora
+                    </button>
+                    <button className="bg-white/10 text-white border border-white/20 px-8 py-5 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all backdrop-blur-md">
+                      <Info size={18} /> Detalhes
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap gap-4">
+                    <button 
+                      onClick={() => setShowLoginModal(true)}
+                      className="inline-flex items-center gap-3 bg-f1-blue text-white px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_0_30px_rgba(38,169,224,0.3)]"
+                    >
+                      <User size={20} />
+                      Entrar
+                    </button>
+                    <button 
+                      onClick={() => setShowPlansModal(true)}
+                      className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md text-white border border-white/20 px-12 py-5 rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/20 transition-all shadow-xl"
+                    >
+                      <CreditCard size={20} />
+                      Ver Planos
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
       )}
 
-      {/* Season 2026 Banner */}
-      <div className="mx-4 md:mx-12 -mt-12 relative z-20 mb-12">
-        <Link 
-          to="/season/2026"
-          className="group relative block w-full h-48 md:h-64 rounded-3xl overflow-hidden border border-white/10 hover:border-f1-blue/50 transition-all duration-500 shadow-2xl"
-        >
-          <img 
-            src="https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" 
-            alt="Temporada 2026"
-            className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
-          <div className="absolute inset-0 flex flex-col justify-center p-8 md:p-12">
-            <span className="text-f1-blue font-black tracking-widest text-[10px] md:text-xs mb-2 block uppercase">Exclusivo GridPlay</span>
-            <h2 className="text-2xl md:text-5xl font-black italic tracking-tighter uppercase mb-4">Temporada 2026</h2>
-            <p className="text-gray-400 text-xs md:text-sm max-w-md font-medium mb-6">Acompanhe todas as corridas da temporada atual com imersão total e câmeras exclusivas.</p>
-            <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-              Explorar Temporada <ChevronRight size={16} />
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Carousels */}
-      <div className="relative z-10">
-        {categories.map((cat, idx) => (
-          <React.Fragment key={cat}>
-            <div className="px-4 md:px-12 mb-12">
-              <h2 className="text-2xl font-black mb-6 italic uppercase tracking-tighter flex items-center gap-3">
-                <span className="w-1.5 h-6 bg-f1-blue" />
-                {cat}
-              </h2>
-              <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide snap-x">
-                {videos.filter(v => v.category === cat).map((video) => (
-                  <div 
-                    key={video.id}
-                    onClick={() => handleWatchClick(video.id)}
-                    className="relative flex-shrink-0 w-64 md:w-80 aspect-video bg-dark-card rounded-xl overflow-hidden group transition-all duration-300 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/50 cursor-pointer"
-                  >
-                    <img 
-                      src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/600/338`} 
-                      alt={video.title}
-                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/600/338`;
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-4">
-                      <h3 className="text-sm md:text-base font-bold leading-tight group-hover:text-f1-blue transition-colors">{video.title}</h3>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{video.year}</p>
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all">
-                          <Play size={14} fill="currentColor" />
-                        </div>
-                      </div>
-                    </div>
-                    {video.status === 'PREMIUM' && (
-                      <div className="absolute top-3 right-3 bg-citrus-yellow text-black text-[8px] font-black px-2 py-1 rounded-sm uppercase tracking-widest shadow-lg">PREMIUM</div>
-                    )}
-                  </div>
-                ))}
+      {/* Main Content Area - Dark & Immersive */}
+      <div className="relative z-10 -mt-20 px-4 md:px-12 space-y-16 pb-24">
+        
+        {/* Season 2026 Promo Banner */}
+        <div className="max-w-[1440px] mx-auto">
+          <Link 
+            to="/season/2026"
+            className="group relative block w-full h-48 md:h-72 rounded-[2.5rem] overflow-hidden border border-white/10 hover:border-f1-blue/50 transition-all duration-700 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] bg-dark-card"
+          >
+            <img 
+              src="https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" 
+              alt="Temporada 2026"
+              className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-1000 grayscale group-hover:grayscale-0"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+            <div className="absolute inset-0 flex flex-col justify-center p-8 md:p-16">
+              <span className="text-f1-blue font-black tracking-[0.3em] text-[10px] mb-3 block uppercase">Exclusivo GridPlay</span>
+              <h2 className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase mb-4 leading-none">Temporada 2026</h2>
+              <p className="text-gray-400 text-xs md:text-base max-w-lg font-medium mb-8 opacity-80">Experimente a adrenalina pura com câmeras onboard exclusivas e telemetria em tempo real.</p>
+              <div className="flex items-center gap-3 text-white font-black text-[10px] md:text-xs uppercase tracking-widest group-hover:gap-5 transition-all">
+                EXPLORAR TEMPORADA <div className="w-10 h-px bg-f1-blue group-hover:w-16 transition-all" /> <ChevronRight size={16} />
               </div>
             </div>
-            {idx === 0 && <AdBanner profile={profile} />}
-          </React.Fragment>
-        ))}
-      </div>
+          </Link>
+        </div>
 
-      {/* Telegram CTA - Differentiated by Plan */}
-      {profile && (
-        <div className="mx-4 md:mx-12 mt-16">
-          <div className={cn(
-            "p-8 md:p-12 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-8 border transition-all duration-500",
-            profile.plan === 'FREE' 
-              ? "bg-dark-card border-white/5 shadow-xl" 
-              : "bg-gradient-to-br from-f1-blue/20 via-black to-transparent border-f1-blue/30 shadow-[0_0_50px_rgba(38,169,224,0.1)]"
-          )}>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center",
-                  profile.plan === 'FREE' ? "bg-gray-800" : "bg-f1-blue/20"
-                )}>
-                  <Users size={20} className={profile.plan === 'FREE' ? "text-gray-400" : "text-f1-blue"} />
+        {/* Dynamic Carousels per Category */}
+        {categories.map((cat, idx) => (
+          <div key={cat} className="space-y-8">
+            <div className="flex items-end justify-between">
+              <h2 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter flex items-center gap-4">
+                <span className="w-2 h-10 bg-f1-blue rounded-full" />
+                {cat}
+              </h2>
+              <button className="text-[10px] text-gray-500 font-bold uppercase tracking-widest border-b border-white/10 pb-1 hover:text-white transition-colors">
+                Ver Tudo
+              </button>
+            </div>
+            
+            <div className="flex gap-6 overflow-x-auto pb-10 scrollbar-hide snap-x -mx-4 md:mx-0 px-4 md:px-0">
+              {videos.filter(v => v.category === cat).map((video) => (
+                <div 
+                  key={video.id}
+                  onClick={() => handleWatchClick(video.id)}
+                  className="relative flex-shrink-0 w-72 md:w-[400px] aspect-video bg-dark-card rounded-2xl overflow-hidden group transition-all duration-500 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/30 cursor-pointer shadow-2xl"
+                >
+                  <img 
+                    src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/800/450`} 
+                    alt={video.title}
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/800/450`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent flex flex-col justify-end p-6 translate-y-2 group-hover:translate-y-0 transition-transform">
+                    <h3 className="text-sm md:text-lg font-black italic uppercase tracking-tight group-hover:text-f1-blue transition-colors mb-2">{video.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{video.year}</p>
+                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all shadow-lg">
+                        <Play size={16} fill="currentColor" />
+                      </div>
+                    </div>
+                  </div>
+                  {video.status === 'PREMIUM' && (
+                    <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-xl">PREMIUM</div>
+                  )}
+                  <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-f1-blue/20 rounded-2xl transition-colors pointer-events-none" />
                 </div>
-                <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
+              ))}
+            </div>
+            {idx === 0 && <AdBanner profile={profile} />}
+          </div>
+        ))}
+
+        {/* Telegram VIP Section - Polished */}
+        {profile && (
+          <div className={cn(
+            "p-10 md:p-20 rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-12 border transition-all duration-1000",
+            profile.plan === 'FREE' 
+              ? "bg-dark-card border-white/5" 
+              : "bg-gradient-to-tr from-f1-blue/10 via-black to-citrus-yellow/5 border-f1-blue/20 shadow-[0_0_100px_rgba(38,169,224,0.05)]"
+          )}>
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-f1-blue/10 flex items-center justify-center rotate-3">
+                  <span className="text-f1-blue text-xl">🚀</span>
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter">
                   {profile.plan === 'FREE' ? "Comunidade GridPlay" : "Canal VIP Telegram"}
                 </h2>
               </div>
               
-              <p className="text-gray-400 text-sm md:text-base max-w-xl leading-relaxed">
+              <p className="text-gray-400 text-sm md:text-xl max-w-2xl leading-relaxed font-medium opacity-80">
                 {profile.plan === 'FREE' 
-                  ? "Como membro do Plano Grátis, você tem acesso à nossa comunidade aberta para discutir as corridas e acesso garantido a todas as transmissões da temporada atual em HD." 
-                  : "Seu acesso Premium inclui o Canal VIP com o acervo histórico completo (1950-2026), documentários exclusivos e downloads liberados."}
+                  ? "Junte-se a milhares de fãs e discuta cada curva em tempo real. Acesse o conteúdo gratuito e receba alertas de novos uploads." 
+                  : "Experiência definitiva ativada. No Canal VIP você tem o acervo histórico em mãos, suporte prioritário e downloads ilimitados."}
               </p>
 
               {profile.plan === 'FREE' && (
-                <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <Link to="/checkout" className="text-citrus-yellow font-black text-xs uppercase tracking-widest flex items-center gap-2 group">
-                    Quero o acervo histórico completo <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
+                <Link to="/checkout" className="inline-flex items-center gap-3 text-citrus-yellow font-black text-xs uppercase tracking-[0.2em] group">
+                  DESBLOQUEAR ACERVO COMPLETO 1950-2026 
+                  <ChevronRight size={16} className="group-hover:translate-x-2 transition-transform" />
+                </Link>
               )}
             </div>
 
-            <div className="flex flex-col items-center gap-4 w-full md:w-auto">
+            <div className="shrink-0 w-full md:w-auto">
               <a 
                 href={profile.plan === 'FREE' ? "https://t.me/+D15DI9e0ckc0NTQx" : "https://t.me/+NkAHGmviP0kxYzZh"} 
                 target="_blank" 
                 rel="noreferrer" 
                 className={cn(
-                  "w-full md:w-auto px-10 py-5 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 shadow-lg",
+                  "w-full md:w-auto px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-2xl",
                   profile.plan === 'FREE' 
-                    ? "bg-white text-black hover:bg-gray-200" 
-                    : "bg-[#24A1DE] text-white hover:bg-[#24A1DE]/90 shadow-[#24A1DE]/20"
+                    ? "bg-white text-black hover:bg-gray-100" 
+                    : "bg-[#24A1DE] text-white hover:shadow-[#24A1DE]/40"
                 )}
               >
-                <ExternalLink size={20} /> 
-                {profile.plan === 'FREE' ? "Entre no grupo grátis" : "Acessar Canal VIP"}
+                <ExternalLink size={24} /> 
+                {profile.plan === 'FREE' ? "Entrar no Grupo Grátis" : "Acessar Canal VIP"}
               </a>
-              {profile.plan === 'FREE' && (
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Acesso Gratuito Liberado</span>
-              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Modals */}
+      {/* Reused Modals Section for consistent logic */}
       <AnimatePresence>
         {showLoginModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1084,19 +1385,19 @@ const Home = ({ profile }: { profile: Profile | null }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLoginModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-md bg-dark-card rounded-[2.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10"
             >
               <button 
                 onClick={() => setShowLoginModal(false)}
-                className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
+                className="absolute top-6 right-6 text-gray-500 hover:text-white z-20 transition-colors"
               >
-                <X size={24} />
+                <X size={28} />
               </button>
               <div className="p-0">
                 <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
@@ -1112,19 +1413,19 @@ const Home = ({ profile }: { profile: Profile | null }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowPlansModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-6xl bg-dark-bg rounded-3xl overflow-y-auto max-h-[90vh] shadow-2xl border border-white/10 p-8 md:p-12"
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-6xl bg-black rounded-[3rem] overflow-y-auto max-h-[95vh] shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10 p-8 md:p-20"
             >
               <button 
                 onClick={() => setShowPlansModal(false)}
-                className="absolute top-6 right-6 text-gray-500 hover:text-white z-10"
+                className="absolute top-8 right-8 text-gray-500 hover:text-white z-20 transition-colors"
               >
-                <X size={24} />
+                <X size={28} />
               </button>
               <Checkout isModal />
             </motion.div>
@@ -1434,26 +1735,48 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
 };
 
 const Maintenance = () => {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  });
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Check if target date is already stored
-    let targetDateStr = localStorage.getItem('maintenance_target_date');
-    let targetDate: Date;
+    const fetchTargetDate = async () => {
+      // Clear legacy localStorage to avoid confusion
+      localStorage.removeItem('maintenance_target_date');
+      
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'maintenance_end_date')
+          .maybeSingle();
 
-    if (targetDateStr) {
-      targetDate = new Date(targetDateStr);
-    } else {
-      // Set target date to 7 days from now and store it
-      targetDate = new Date();
-      targetDate.setDate(targetDate.getDate() + 7);
-      localStorage.setItem('maintenance_target_date', targetDate.toISOString());
-    }
+        if (error) {
+          console.error("Supabase error fetching date:", error);
+          throw error;
+        }
+
+        if (data && data.value) {
+          console.log("Maintenance target date fetched from Supabase:", data.value);
+          setTargetDate(new Date(data.value));
+        } else {
+          console.warn("No date found in Supabase site_settings for 'maintenance_end_date'. Using default fallback.");
+          const fallback = new Date();
+          fallback.setDate(fallback.getDate() + 7);
+          setTargetDate(fallback);
+        }
+      } catch (err) {
+        console.error("Failed to fetch maintenance date from DB:", err);
+        const fallback = new Date();
+        fallback.setDate(fallback.getDate() + 7);
+        setTargetDate(fallback);
+      }
+    };
+
+    fetchTargetDate();
+  }, []);
+
+  useEffect(() => {
+    if (!targetDate) return;
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -1471,7 +1794,6 @@ const Maintenance = () => {
       };
     };
 
-    // Initial calculation
     setTimeLeft(calculateTimeLeft());
 
     const timer = setInterval(() => {
@@ -1484,7 +1806,7 @@ const Maintenance = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [targetDate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-dark-bg px-4 py-20 text-center relative overflow-hidden">
