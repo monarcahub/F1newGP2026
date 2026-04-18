@@ -1882,6 +1882,7 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [showTelegramAlert, setShowTelegramAlert] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -1905,6 +1906,14 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
       if (data) {
         setVideo(data);
+        // Mostrar alerta do Telegram para usuários premium ativos
+        if (profile?.subscription_status === 'ACTIVE' && profile?.plan !== 'FREE') {
+          const hasSeenAlert = sessionStorage.getItem(`telegram-alert-${id}`);
+          if (!hasSeenAlert) {
+            setShowTelegramAlert(true);
+            sessionStorage.setItem(`telegram-alert-${id}`, 'true');
+          }
+        }
       }
       setLoading(false);
     };
@@ -1936,7 +1945,50 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <div className="min-h-screen bg-black pt-20">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4 relative">
+        {/* Alerta de Experiência Premium sem Anúncios no Telegram */}
+        <AnimatePresence>
+          {showTelegramAlert && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute -top-4 left-4 right-4 z-[60] md:left-auto md:right-4 md:w-96"
+            >
+              <div className="bg-f1-blue p-6 rounded-xl shadow-2xl border border-white/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+                <button 
+                  onClick={() => setShowTelegramAlert(false)}
+                  className="absolute top-2 right-2 text-white/60 hover:text-white"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex gap-4">
+                  <div className="mt-1">
+                    <Trophy className="text-citrus-yellow" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-black italic uppercase tracking-tighter text-lg leading-tight mb-2">
+                      Experiência Premium Ativa
+                    </h4>
+                    <p className="text-white/80 text-xs font-medium leading-relaxed mb-4">
+                      Como você é assinante, lembre-se que este vídeo também está disponível no nosso **Telegram Privado** sem nenhum anúncio e com download liberado!
+                    </p>
+                    <a 
+                      href="https://t.me/+v_S5IeZ-K0xlMzYx" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 bg-white text-f1-blue px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-colors"
+                    >
+                      Acessar Canal Telegram
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="mb-6">
           <SeasonSelector 
             year={video.year.toString()} 
@@ -1947,26 +1999,40 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
         <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative group">
           {accessGranted ? (
-            <div className="relative w-full h-full overflow-hidden">
-              {/* Ocultador de Barra Superior (Google Drive/YouTube) */}
-              <div className="absolute top-0 left-0 w-full h-12 bg-transparent z-40 pointer-events-none md:pointer-events-auto" />
+            <div className="relative w-full h-full overflow-hidden bg-black">
+              {/* Ocultador de Barra Superior (Apenas no topo para não bloquear o botão de Fullscreen que fica embaixo) */}
+              <div className="absolute top-0 left-0 w-full h-14 bg-transparent z-10 pointer-events-none" />
               
               {video.embed_url.includes('<iframe') ? (
                 <div 
-                  className="w-full h-full scale-[1.01]" // Leve aumento para esconder bordas
-                  dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
+                  className="w-full h-full"
+                  dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace('<iframe', '<iframe allow="autoplay; fullscreen"') }}
                 />
               ) : (
                 <iframe 
                   src={video.embed_url.replace('/view', '/preview')} 
-                  className="w-full h-full scale-[1.01]"
+                  className="w-full h-full"
+                  allow="autoplay; fullscreen"
                   allowFullScreen
                   title={video.title}
                 />
               )}
 
-              {/* Bloqueador de clique direito fake para dificultar "Salvar vídeo como" */}
-              <div className="absolute inset-0 z-30 bg-transparent pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
+              {/* Botão de lembrete de progresso (Como o Drive não permite ler o tempo, o usuário pode marcar que parou aqui) */}
+              <div className="absolute bottom-16 right-4 z-40 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={() => {
+                    const time = prompt("Em que minuto você parou? (Ex: 12:30)");
+                    if(time) {
+                      localStorage.setItem(`progress-${video.id}`, time);
+                      alert(`Progresso de ${time} salvo localmente.`);
+                    }
+                  }}
+                  className="bg-black/60 backdrop-blur-md text-white text-[10px] px-3 py-1.5 rounded-full border border-white/10 hover:bg-f1-blue transition-colors uppercase font-black"
+                >
+                  Salvar Onde Parei
+                </button>
+              </div>
             </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-8 text-center">
