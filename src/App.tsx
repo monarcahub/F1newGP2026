@@ -1945,21 +1945,29 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
           />
         </div>
 
-        <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative">
+        <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative group">
           {accessGranted ? (
-            video.embed_url.includes('<iframe') ? (
-              <div 
-                className="w-full h-full"
-                dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
-              />
-            ) : (
-              <iframe 
-                src={video.embed_url} 
-                className="w-full h-full"
-                allowFullScreen
-                title={video.title}
-              />
-            )
+            <div className="relative w-full h-full overflow-hidden">
+              {/* Ocultador de Barra Superior (Google Drive/YouTube) */}
+              <div className="absolute top-0 left-0 w-full h-12 bg-transparent z-40 pointer-events-none md:pointer-events-auto" />
+              
+              {video.embed_url.includes('<iframe') ? (
+                <div 
+                  className="w-full h-full scale-[1.01]" // Leve aumento para esconder bordas
+                  dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }}
+                />
+              ) : (
+                <iframe 
+                  src={video.embed_url.replace('/view', '/preview')} 
+                  className="w-full h-full scale-[1.01]"
+                  allowFullScreen
+                  title={video.title}
+                />
+              )}
+
+              {/* Bloqueador de clique direito fake para dificultar "Salvar vídeo como" */}
+              <div className="absolute inset-0 z-30 bg-transparent pointer-events-none" onContextMenu={(e) => e.preventDefault()} />
+            </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-8 text-center">
               <Lock size={48} className="text-f1-blue mb-6" />
