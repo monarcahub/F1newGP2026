@@ -1143,7 +1143,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
       const { data, error } = await supabase
         .from('videos')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
       
       if (data) setVideos(data);
       setLoading(false);
@@ -1509,7 +1509,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
         .from('videos')
         .select('*')
         .eq('year', parseInt(year || '2026'))
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) {
         console.error("Error fetching season videos:", error);
