@@ -243,7 +243,7 @@ const Carousel = ({ title, videos }: { title: string, videos: Video[], key?: str
       <h2 className="text-lg md:text-xl font-bold mb-4 flex items-center gap-2">
         {title} <ChevronRight size={20} className="text-f1-blue" />
       </h2>
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
         {videos.map(video => <VideoCard key={video.id} video={video} />)}
       </div>
     </div>
@@ -1251,7 +1251,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
       )}
 
       {/* Main Content Area - Dark & Immersive */}
-      <div className="relative z-10 -mt-20 px-4 md:px-12 space-y-16 pb-24">
+      <div className="relative z-10 mt-8 md:-mt-20 px-4 md:px-12 space-y-16 pb-24">
         
         {/* Premium Quick Access - Only for Paid Users */}
         {profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE' && (
@@ -1380,7 +1380,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
               </button>
             </div>
             
-            <div className="flex gap-6 overflow-x-auto pb-10 scrollbar-hide snap-x -mx-4 md:mx-0 px-4 md:px-0">
+            <div className="flex gap-6 overflow-x-auto pb-6 custom-scrollbar snap-x -mx-4 md:mx-0 px-4 md:px-0">
               {videos.filter(v => v.category === cat).map((video) => (
                 <div 
                   key={video.id}
@@ -1727,7 +1727,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
           Corridas Disponíveis
         </h2>
         
-        <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide snap-x">
+        <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar snap-x">
           {episodes.map((video) => (
             <div 
               key={video.id}

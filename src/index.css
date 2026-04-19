@@ -7,6 +7,23 @@
   --color-dark-card: #1A1A1A;
 }
 
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(38, 169, 224, 0.2);
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(38, 169, 224, 0.5);
+  }
+}
+
 @layer base {
   body {
     @apply bg-dark-bg text-white antialiased;
