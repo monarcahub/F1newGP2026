@@ -1142,9 +1142,12 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
   useEffect(() => {
     const fetchVideos = async () => {
+      // Filtering to only show 2026 Season on Home page carousels/feed
+      // "Hidden" seasons will only be accessible via Archives and SeasonPage
       const { data, error } = await supabase
         .from('videos')
         .select('*')
+        .eq('year', 2026) // Only show 2026 on Home
         .order('created_at', { ascending: true });
       
       if (data) setVideos(data);
@@ -1574,11 +1577,75 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
 const SeasonPage = ({ profile }: { profile: Profile | null }) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
   const { year } = useParams();
   const navigate = useNavigate();
+
+  const currentYear = parseInt(year || '2026');
+
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!profile) {
+        setHasAccess(false);
+        setLoading(false);
+        return;
+      }
+
+      if (profile.role === 'admin') {
+        setHasAccess(true);
+        fetchVideos();
+        return;
+      }
+
+      if (profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE') {
+        setHasAccess(true);
+        fetchVideos();
+        return;
+      }
+
+      if (currentYear === 2026) {
+        setHasAccess(true);
+        fetchVideos();
+        return;
+      }
+
+      const { data: purchase } = await supabase
+        .from('f1season_purchases')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('season_year', currentYear)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+
+      if (purchase) {
+        setHasAccess(true);
+        fetchVideos();
+      } else {
+        setHasAccess(false);
+        setLoading(false);
+      }
+    };
+
+    const fetchVideos = async () => {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('year', currentYear)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching season videos:", error);
+      } else {
+        setVideos(data || []);
+      }
+      setLoading(false);
+    };
+
+    checkAccess();
+  }, [year, profile]);
 
   useEffect(() => {
     const fetchAvailableYears = async () => {
@@ -1594,31 +1661,31 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
     fetchAvailableYears();
   }, []);
 
-  useEffect(() => {
-    const fetchVideos = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('videos')
-        .select('*')
-        .eq('year', parseInt(year || '2026'))
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error("Error fetching season videos:", error);
-      } else {
-        setVideos(data || []);
-      }
-      setLoading(false);
-    };
-
-    fetchVideos();
-  }, [year]);
-
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-dark-bg">
       <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
     </div>
   );
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-center px-4 pt-32">
+        <div className="w-24 h-24 bg-f1-blue/10 rounded-full flex items-center justify-center mb-8 border border-f1-blue/20">
+          <Lock className="text-f1-blue" size={40} />
+        </div>
+        <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Temporada Bloqueada</h2>
+        <p className="text-gray-400 max-w-md mb-8 font-medium italic">
+          Você não tem acesso a esta temporada. Adquira o acesso individual ou torne-se Premium para liberar todo o acervo.
+        </p>
+        <button 
+          onClick={() => navigate('/archives')}
+          className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+        >
+          Ir para Arquivos
+        </button>
+      </div>
+    );
+  }
 
   const featuredVideo = videos[0];
   const episodes = videos;
@@ -1706,8 +1773,14 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
           </div>
         </div>
       ) : (
-        <div className="h-[40vh] flex items-center justify-center text-gray-500 font-bold uppercase tracking-widest">
-          Nenhum vídeo disponível para esta temporada ainda.
+        <div className="h-[50vh] flex flex-col items-center justify-center text-center px-4">
+          <History size={48} className="text-gray-700 mb-6" />
+          <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-gray-400 mb-2">
+            Nenhum vídeo disponível para esta temporada ainda
+          </h2>
+          <p className="text-xs md:text-sm text-gray-600 max-w-md font-medium uppercase tracking-widest leading-relaxed">
+            Se você adquiriu o acesso individual para este ano, por favor aguarde até <span className="text-f1-blue">24h</span> para que o acervo seja processado e disponibilizado para você aqui no site.
+          </p>
         </div>
       )}
 
@@ -1832,6 +1905,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
   const [seasonLinks, setSeasonLinks] = useState<Record<number, string>>({});
   const [userPurchases, setUserPurchases] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   
   const seasons = Array.from({ length: 2025 - 1950 + 1 }, (_, i) => 2025 - i);
   const isPremium = profile?.subscription_status === 'ACTIVE' && profile?.plan !== 'FREE';
@@ -1906,23 +1980,25 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
 
                     <div className="relative z-10 space-y-4">
                       {canAccess ? (
-                        hasLink ? (
-                          <a 
-                            href={seasonLinks[year]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full bg-white text-black py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-gray-200 transition-all shadow-xl"
-                          >
-                            ACESSAR TELEGRAM <ExternalLink size={14} />
-                          </a>
-                        ) : (
+                        <div className="space-y-3">
                           <button 
-                            onClick={() => window.location.href = `/season/${year}`}
-                            className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform"
+                            onClick={() => navigate(`/season/${year}`)}
+                            className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)]"
                           >
                             VER NO SITE
                           </button>
-                        )
+
+                          {isPremium && hasLink && (
+                            <a 
+                              href={seasonLinks[year]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full bg-white/10 text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-white/20 transition-all border border-white/10"
+                            >
+                              ACESSAR TELEGRAM <ExternalLink size={14} />
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="flex flex-col gap-1">
@@ -1931,6 +2007,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                           </div>
                           <button 
                             onClick={() => {
+                              console.log("Opening Plans Modal for year:", year, "Profile:", profile?.id);
                               setSelectedYear(year);
                               setShowPlansModal(true);
                             }}
@@ -2138,6 +2215,7 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
   const { id } = useParams();
   const [video, setVideo] = useState<Video | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [userPurchases, setUserPurchases] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
@@ -2154,6 +2232,22 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
     };
     fetchAvailableYears();
   }, []);
+
+  useEffect(() => {
+    const fetchUserPurchases = async () => {
+      if (profile) {
+        const { data } = await supabase
+          .from('f1season_purchases')
+          .select('season_year')
+          .eq('user_id', profile.id)
+          .eq('status', 'ACTIVE');
+        if (data) {
+          setUserPurchases(data.map(p => p.season_year));
+        }
+      }
+    };
+    fetchUserPurchases();
+  }, [profile]);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -2177,7 +2271,7 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
       setLoading(false);
     };
     fetchVideo();
-  }, [id]);
+  }, [id, profile]);
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-dark-bg">
@@ -2189,11 +2283,20 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
   const hasAccess = () => {
     if (video.status === 'FREE') return true;
-    if (!profile || profile.subscription_status === 'INACTIVE') return false;
+    if (!profile) return false;
+    if (profile.role === 'admin') return true;
 
     const year = video.year;
-    const plan = profile.plan;
+    
+    // Check individual purchase
+    if (userPurchases.includes(year)) return true;
 
+    if (profile.subscription_status === 'INACTIVE') return false;
+
+    // Default Season access (2026 is public for any active user?)
+    if (year === 2026) return true;
+
+    const plan = profile.plan;
     if (plan === 'FREE' && year < 2026) return false;
     if ((plan === 'MONTHLY' || plan === 'MENSAL') && year < 1981) return false;
     
@@ -2616,37 +2719,60 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
   const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    console.log("Checkout Component Mounted/Updated", { isModal, selectedYear, hasProfile: !!profile });
+  }, [isModal, selectedYear, profile]);
+
   const handleSeasonalPurchase = async () => {
+    console.log("handleSeasonalPurchase CLICKED!");
+    console.log("Full State:", { selectedYear, profileId: profile?.id });
+    
     if (!profile) {
+      console.log("Pre-purchase check failed: No profile. Redirecting to login.");
       navigate('/login');
       return;
     }
 
     if (!selectedYear) {
+      console.log("Pre-purchase check failed: No selectedYear.");
       alert("Por favor, selecione uma temporada na página de Arquivos primeiro.");
       navigate('/archives');
       return;
     }
 
     setIsRedirecting(true);
+    console.log("Starting Supabase upsert for PENDING purchase...");
 
     try {
       // 1. Create PENDING record for n8n to track
-      // Using upsert in case they clicked again before completing
-      await supabase
+      // Adding a dummy expires_at just in case the SQL adjustment didn't run
+      // This will be updated by his n8n later anyway.
+      const { data, error } = await supabase
         .from('f1season_purchases')
         .upsert({
           user_id: profile.id,
           season_year: selectedYear,
-          status: 'PENDING'
-        }, { onConflict: 'user_id,season_year' });
+          status: 'PENDING',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h as fallback
+        }, { onConflict: 'user_id,season_year' })
+        .select();
+
+      if (error) {
+        console.error("Supabase Error during seasonal purchase upsert:", error);
+        // Even if DB fails, we might still want to redirect, 
+        // but it's better to warn the developer in logs.
+      } else {
+        console.log("Supabase insert successful:", data);
+      }
 
       // 2. Wait a bit to show the message
+      console.log("Pre-redirect pause started...");
       setTimeout(() => {
+        console.log("Redirecting to Hotmart now!");
         window.location.href = "https://pay.hotmart.com/C102920427K?off=wvkw08ju";
       }, 3000);
-    } catch (error) {
-      console.error("Erro ao processar intenção de compra:", error);
+    } catch (err) {
+      console.error("Fatal exception during handleSeasonalPurchase:", err);
       setIsRedirecting(false);
     }
   };
@@ -3373,7 +3499,7 @@ export default function App() {
             <Route path="/" element={<Home profile={profile} />} />
             <Route path="/login" element={profile ? <Navigate to="/" /> : <Login />} />
             <Route path="/watch/:id" element={<Watch profile={profile} />} />
-            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout" element={<Checkout profile={profile} />} />
             <Route path="/account" element={<Account profile={profile} />} />
             <Route path="/season/:year" element={<SeasonPage profile={profile} />} />
             <Route path="/admin" element={<AdminPanel profile={profile} />} />
