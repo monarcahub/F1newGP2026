@@ -1828,6 +1828,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
 
 const Archive = ({ profile }: { profile: Profile | null }) => {
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [seasonLinks, setSeasonLinks] = useState<Record<number, string>>({});
   const [userPurchases, setUserPurchases] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1929,7 +1930,10 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                             <span className="text-xs font-bold text-white/60 leading-none">R$ 10,00 / temporada</span>
                           </div>
                           <button 
-                            onClick={() => setShowPlansModal(true)}
+                            onClick={() => {
+                              setSelectedYear(year);
+                              setShowPlansModal(true);
+                            }}
                             className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)] block text-center"
                           >
                             ADQUIRIR ACESSO
@@ -1975,10 +1979,12 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
               <div className="text-center mb-12">
                 <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-4">Escolha seu Acesso</h2>
                 <p className="text-gray-400 max-w-xl mx-auto uppercase text-[10px] font-black tracking-[0.3em]">
-                  Torne-se premium para liberar todo o arquivo histórico e transmissões ao vivo.
+                  {selectedYear 
+                    ? `Você está adquirindo acesso à Temporada ${selectedYear}` 
+                    : 'Torne-se premium para liberar todo o arquivo histórico.'}
                 </p>
               </div>
-              <Checkout isModal />
+              <Checkout isModal selectedYear={selectedYear} profile={profile} />
             </motion.div>
           </div>
         )}
@@ -2605,12 +2611,66 @@ const Login = ({ isModal = false, onLoginSuccess }: { isModal?: boolean, onLogin
   );
 };
 
-const Checkout = ({ isModal = false }: { isModal?: boolean }) => {
+const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { isModal?: boolean, selectedYear?: number | null, profile?: Profile | null }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
+
+  const handleSeasonalPurchase = async () => {
+    if (!profile) {
+      navigate('/login');
+      return;
+    }
+
+    if (!selectedYear) {
+      alert("Por favor, selecione uma temporada na página de Arquivos primeiro.");
+      navigate('/archives');
+      return;
+    }
+
+    setIsRedirecting(true);
+
+    try {
+      // 1. Create PENDING record for n8n to track
+      // Using upsert in case they clicked again before completing
+      await supabase
+        .from('f1season_purchases')
+        .upsert({
+          user_id: profile.id,
+          season_year: selectedYear,
+          status: 'PENDING'
+        }, { onConflict: 'user_id,season_year' });
+
+      // 2. Wait a bit to show the message
+      setTimeout(() => {
+        window.location.href = "https://pay.hotmart.com/C102920427K?off=wvkw08ju";
+      }, 3000);
+    } catch (error) {
+      console.error("Erro ao processar intenção de compra:", error);
+      setIsRedirecting(false);
+    }
+  };
 
   const content = (
     <div className={cn("w-full max-w-6xl mx-auto", !isModal && "pt-32 pb-20 px-4")}>
+      <AnimatePresence>
+        {isRedirecting && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6"
+          >
+            <div className="w-20 h-20 border-4 border-f1-blue border-t-transparent rounded-full animate-spin mb-8" />
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-4">Quase lá!</h2>
+            <p className="text-gray-400 max-w-md uppercase text-[10px] font-black tracking-[0.3em] leading-relaxed">
+              Após confirmação do pagamento, a temporada estará disponível para você assistir aqui no site em até 2 minutos.
+            </p>
+            <p className="mt-8 text-f1-blue font-bold animate-pulse text-xs">Redirecionando para o Checkout Seguro...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2624,32 +2684,32 @@ const Checkout = ({ isModal = false }: { isModal?: boolean }) => {
       
       {/* Individual Season Purchase - Featured Above */}
       <div className="flex justify-center mb-16">
-        <div className="bg-gradient-to-tr from-white/5 to-white/10 p-8 md:p-12 rounded-[3.5rem] border border-white/10 flex flex-col md:flex-row items-center gap-8 md:gap-16 w-full max-w-4xl hover:border-f1-blue/30 transition-all group backdrop-blur-xl shadow-2xl relative overflow-hidden">
+        <div className="bg-gradient-to-tr from-white/5 to-white/10 p-8 md:p-12 rounded-[3.5rem] border border-white/10 flex flex-col md:flex-row items-center gap-8 md:gap-16 w-full max-w-4xl hover:border-f1-blue/30 transition-all group backdrop-blur-xl shadow-2xl relative overflow-hidden text-center md:text-left">
           <div className="absolute top-0 right-0 w-32 h-32 bg-f1-blue/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-f1-blue/20 transition-colors" />
           
-          <div className="flex-1 text-center md:text-left">
+          <div className="flex-1">
             <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
               <span className="bg-f1-blue/20 text-f1-blue text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Oferta Avulsa</span>
               <span className="w-8 h-px bg-white/10" />
             </div>
-            <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter mb-4">Temporada Individual</h3>
+            <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter mb-4">
+              {selectedYear ? `Temporada ${selectedYear}` : 'Temporada Individual'}
+            </h3>
             <div className="text-3xl font-black text-white italic tracking-tighter mb-4">
               R$ 10<span className="text-xs font-normal text-gray-500 not-italic ml-1">/mês</span>
             </div>
             <ul className="text-[10px] md:text-xs text-gray-400 space-y-2 font-medium">
               <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acesso VIP via Site/Player</li>
-              <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> Uma temporada à sua escolha</li>
+              <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> {selectedYear ? `Liberação de ${selectedYear}` : 'Uma temporada à sua escolha'}</li>
             </ul>
           </div>
 
-          <a 
-            href="https://pay.hotmart.com/C102920427K?off=wvkw08ju"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button 
+            onClick={handleSeasonalPurchase}
             className="w-full md:w-auto bg-white text-black font-black px-12 py-6 rounded-full text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center whitespace-nowrap"
           >
             ADQUIRIR ACESSO AGORA
-          </a>
+          </button>
         </div>
       </div>
       
