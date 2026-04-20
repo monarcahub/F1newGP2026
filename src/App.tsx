@@ -1828,8 +1828,38 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
 
 const Archive = ({ profile }: { profile: Profile | null }) => {
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [seasonLinks, setSeasonLinks] = useState<Record<number, string>>({});
+  const [userPurchases, setUserPurchases] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const seasons = Array.from({ length: 2025 - 1950 + 1 }, (_, i) => 2025 - i);
   const isPremium = profile?.subscription_status === 'ACTIVE' && profile?.plan !== 'FREE';
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // 1. Fetch official links
+      const { data: links } = await supabase.from('f1season_links').select('year, telegram_link');
+      if (links) {
+        const linkMap = links.reduce((acc, curr) => ({ ...acc, [curr.year]: curr.telegram_link }), {});
+        setSeasonLinks(linkMap);
+      }
+
+      // 2. Fetch user individual purchases
+      if (profile) {
+        const { data: purchases } = await supabase
+          .from('f1season_purchases')
+          .select('season_year')
+          .eq('user_id', profile.id)
+          .eq('status', 'ACTIVE');
+        
+        if (purchases) {
+          setUserPurchases(purchases.map(p => p.season_year));
+        }
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [profile]);
 
   return (
     <div className="min-h-screen bg-black pt-32 pb-24">
@@ -1843,67 +1873,81 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
             Arquivos <br/> <span className="text-white/20">GridPlay</span>
           </h1>
           <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
-            Acesso exclusivo a mais de 70 anos de história. De Fangio a Verstappen, todas as eras da Fórmula 1 em um só lugar.
+            Acesso exclusivo a mais de 70 anos de história. Todas as eras da Fórmula 1 organizadas para você.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-          {seasons.map((year) => {
-            const isReleased = year >= 1981 && year <= 2025;
-            
-            return (
-              <motion.div 
-                key={year}
-                whileHover={{ y: -10 }}
-                className="group relative bg-dark-card rounded-[2.5rem] border border-white/5 hover:border-f1-blue/40 transition-all duration-500 overflow-hidden shadow-2xl"
-              >
-                <div className="aspect-[3.5/4] p-8 flex flex-col justify-between">
-                  <div className="relative z-10">
-                    <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase block mb-2 opacity-60">Temporada</span>
-                    <h3 className="text-5xl font-black italic tracking-tighter leading-none group-hover:text-f1-blue transition-colors">{year}</h3>
-                  </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+            {seasons.map((year) => {
+              const hasLink = !!seasonLinks[year];
+              const hasIndividualAccess = userPurchases.includes(year);
+              const canAccess = isPremium || hasIndividualAccess;
+              
+              return (
+                <motion.div 
+                  key={year}
+                  whileHover={{ y: -10 }}
+                  className="group relative bg-dark-card rounded-[2.5rem] border border-white/5 hover:border-f1-blue/40 transition-all duration-500 overflow-hidden shadow-2xl"
+                >
+                  <div className="aspect-[3.5/4] p-8 flex flex-col justify-between">
+                    <div className="relative z-10">
+                      <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase block mb-2 opacity-60">Temporada</span>
+                      <h3 className="text-5xl font-black italic tracking-tighter leading-none group-hover:text-f1-blue transition-colors">{year}</h3>
+                      {hasIndividualAccess && (
+                        <span className="inline-block mt-2 bg-green-500/10 text-green-500 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest border border-green-500/20">Acesso Individual Ativo</span>
+                      )}
+                    </div>
 
-                  <div className="relative z-10 space-y-4">
-                    {isPremium ? (
-                      isReleased ? (
-                        <a 
-                          href="https://t.me/+v_S5IeZ-K0xlMzYx"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full bg-white text-black py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-gray-200 transition-all shadow-xl"
-                        >
-                          ACESSAR TELEGRAM <ExternalLink size={14} />
-                        </a>
+                    <div className="relative z-10 space-y-4">
+                      {canAccess ? (
+                        hasLink ? (
+                          <a 
+                            href={seasonLinks[year]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full bg-white text-black py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-gray-200 transition-all shadow-xl"
+                          >
+                            ACESSAR TELEGRAM <ExternalLink size={14} />
+                          </a>
+                        ) : (
+                          <button 
+                            onClick={() => window.location.href = `/season/${year}`}
+                            className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform"
+                          >
+                            VER NO SITE
+                          </button>
+                        )
                       ) : (
-                        <div className="w-full bg-white/5 text-white/20 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-center border border-white/5">
-                          EM BREVE
+                        <div className="space-y-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[10px] font-black text-citrus-yellow uppercase tracking-widest leading-none">Acesso Mensal</span>
+                            <span className="text-xs font-bold text-white/60 leading-none">R$ 10,00 / temporada</span>
+                          </div>
+                          <button 
+                            onClick={() => setShowPlansModal(true)}
+                            className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)] block text-center"
+                          >
+                            ADQUIRIR ACESSO
+                          </button>
                         </div>
-                      )
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] font-black text-citrus-yellow uppercase tracking-widest leading-none">Acesso Individual</span>
-                          <span className="text-xs font-bold text-white/60 leading-none">R$ 10,00 / temporada</span>
-                        </div>
-                        <button 
-                          onClick={() => setShowPlansModal(true)}
-                          className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)] block text-center"
-                        >
-                          ADQUIRIR ACESSO
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Background Number Accent */}
-                <div className="absolute -bottom-10 -right-10 text-[12rem] font-black italic text-white/[0.02] pointer-events-none group-hover:text-f1-blue/5 transition-colors leading-none tracking-tighter">
-                  {year.toString().slice(-2)}
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                  {/* Background Number Accent */}
+                  <div className="absolute -bottom-10 -right-10 text-[12rem] font-black italic text-white/[0.02] pointer-events-none group-hover:text-f1-blue/5 transition-colors leading-none tracking-tighter">
+                    {year.toString().slice(-2)}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
@@ -1920,7 +1964,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
-              className="relative w-full max-w-6xl bg-black rounded-[3rem] overflow-y-auto max-h-[95vh] shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10 p-6 md:p-20"
+              className="relative w-full max-w-6xl bg-black rounded-[3rem] overflow-y-auto max-h-[95vh] shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10 p-6 md:p-20 custom-scrollbar"
             >
               <button 
                 onClick={() => setShowPlansModal(false)}
@@ -2578,6 +2622,37 @@ const Checkout = ({ isModal = false }: { isModal?: boolean }) => {
         </p>
       </motion.div>
       
+      {/* Individual Season Purchase - Featured Above */}
+      <div className="flex justify-center mb-16">
+        <div className="bg-gradient-to-tr from-white/5 to-white/10 p-8 md:p-12 rounded-[3.5rem] border border-white/10 flex flex-col md:flex-row items-center gap-8 md:gap-16 w-full max-w-4xl hover:border-f1-blue/30 transition-all group backdrop-blur-xl shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-f1-blue/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-f1-blue/20 transition-colors" />
+          
+          <div className="flex-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
+              <span className="bg-f1-blue/20 text-f1-blue text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Oferta Avulsa</span>
+              <span className="w-8 h-px bg-white/10" />
+            </div>
+            <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter mb-4">Temporada Individual</h3>
+            <div className="text-3xl font-black text-white italic tracking-tighter mb-4">
+              R$ 10<span className="text-xs font-normal text-gray-500 not-italic ml-1">/mês</span>
+            </div>
+            <ul className="text-[10px] md:text-xs text-gray-400 space-y-2 font-medium">
+              <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acesso VIP via Site/Player</li>
+              <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> Uma temporada à sua escolha</li>
+            </ul>
+          </div>
+
+          <a 
+            href="https://pay.hotmart.com/C102920427K?off=wvkw08ju"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full md:w-auto bg-white text-black font-black px-12 py-6 rounded-full text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center whitespace-nowrap"
+          >
+            ADQUIRIR ACESSO AGORA
+          </a>
+        </div>
+      </div>
+      
       {/* Billing Toggle */}
       <div className="flex items-center bg-white/5 p-1.5 rounded-full mb-16 border border-white/10 w-fit mx-auto backdrop-blur-md">
         <button 
@@ -2601,78 +2676,67 @@ const Checkout = ({ isModal = false }: { isModal?: boolean }) => {
       </div>
 
       <div className="flex flex-wrap justify-center gap-8 w-full">
-        {/* Free Plan (Always Visible as secondary) */}
-        <div className="bg-dark-card/50 p-10 rounded-[2.5rem] border border-white/5 flex flex-col backdrop-blur-sm hover:border-white/10 transition-colors w-full md:w-[380px]">
-          <div className="mb-8">
-            <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-            <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">Acesso Básico com anúncios</p>
-          </div>
-          <div className="text-4xl font-black text-white mb-8 uppercase tracking-tighter italic">GRÁTIS</div>
-          <ul className="text-xs text-gray-400 space-y-4 mb-12 flex-1 font-medium">
-            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Comunidade no Telegram</li>
-            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas corridas em HD</li>
-            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Apenas temporada atual (2024+)</li>
-            <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> R$10 / temporada avulsa</li>
-          </ul>
-          <button 
-            onClick={() => navigate('/')}
-            className="w-full border border-white/10 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest hover:bg-white/5 transition-all"
-          >
-            Manter Plano Atual
-          </button>
-        </div>
-
         {billingCycle === 'monthly' ? (
           /* Monthly */
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gradient-to-br from-f1-blue/10 to-black p-10 rounded-[2.5rem] border border-f1-blue/30 flex flex-col shadow-[0_0_60px_rgba(38,169,224,0.15)] w-full md:w-[380px]"
+            className="bg-gradient-to-br from-f1-blue/10 to-black p-10 rounded-[2.5rem] border border-f1-blue/30 flex flex-col shadow-[0_0_60px_rgba(38,169,224,0.15)] w-full lg:w-[450px]"
           >
             <div className="mb-8">
               <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
-              <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">Acesso Premium</p>
+              <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest leading-none">Acesso Premium Total</p>
             </div>
             <div className="text-4xl font-black text-white mb-8 italic tracking-tighter">
               R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
             </div>
             <ul className="text-xs text-gray-300 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 - Atual</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Filmes, Séries e Documentários</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios em todo o site</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Filmes e Documentários</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios no site</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
             </ul>
-            <button className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20">
+            <a 
+              href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1&bid=1776637567387"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 text-center block"
+            >
               Assinar Mensal
-            </button>
+            </a>
           </motion.div>
         ) : (
           /* Annual */
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full md:w-[380px]"
+            className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full lg:w-[450px]"
           >
             <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
             <div className="mb-8">
               <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
-              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">Acesso Total</p>
+              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest leading-none">Acesso Total Vitalício</p>
             </div>
             <div className="mb-8">
               <div className="text-xs text-gray-500 line-through font-bold mb-1">12x R$ 28,00</div>
               <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">
                 12x R$ 14,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter">R$ 140,00 à vista (2 meses grátis)</p>
+              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter leading-none">R$ 140,00 à vista (2 meses grátis)</p>
             </div>
             <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Tudo do plano mensal</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
             </ul>
-            <button className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20">
+            <a 
+              href="https://pay.hotmart.com/C102920427K?bid=1776637121004"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
+            >
               Assinar Anual
-            </button>
+            </a>
           </motion.div>
         )}
       </div>
