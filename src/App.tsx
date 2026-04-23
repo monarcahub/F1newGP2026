@@ -1776,7 +1776,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
         <div className="h-[50vh] flex flex-col items-center justify-center text-center px-4">
           <History size={48} className="text-gray-700 mb-6" />
           <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter text-gray-400 mb-2">
-            Nenhum vídeo disponível para esta temporada ainda
+            VIDEOS SENDO CARREGADOS
           </h2>
           <p className="text-xs md:text-sm text-gray-600 max-w-md font-medium uppercase tracking-widest leading-relaxed">
             Se você adquiriu o acesso individual para este ano, por favor aguarde até <span className="text-f1-blue">24h</span> para que o acervo seja processado e disponibilizado para você aqui no site.
