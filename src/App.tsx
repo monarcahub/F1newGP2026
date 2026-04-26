@@ -2362,23 +2362,36 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
         <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative group">
           {accessGranted ? (
             <div className="relative w-full h-full overflow-hidden bg-black">
-              {/* Ocultador de Barra Superior (Apenas no topo para não bloquear o botão de Fullscreen que fica embaixo) */}
-              <div className="absolute top-0 left-0 w-full h-14 bg-transparent z-10 pointer-events-none" />
+              {/* Container de recorte para ocultar controles superiores do player (botão de abrir em nova janela do Drive) */}
+              <div className="w-full h-full" style={{ marginTop: '-48px', height: 'calc(100% + 48px)' }}>
+                {video.embed_url.includes('<iframe') ? (
+                  <div 
+                    className="w-full h-full"
+                    dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace('<iframe', '<iframe allow="autoplay; fullscreen" style="border:none; width:100%; height:100%;"') }}
+                  />
+                ) : (
+                  <iframe 
+                    src={video.embed_url.replace('/view', '/preview')} 
+                    className="w-full h-full border-none"
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                    title={video.title}
+                  />
+                )}
+              </div>
               
-              {video.embed_url.includes('<iframe') ? (
-                <div 
-                  className="w-full h-full"
-                  dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace('<iframe', '<iframe allow="autoplay; fullscreen"') }}
+              {/* Overlay de segurança extra no topo */}
+              <div className="absolute top-0 left-0 w-full h-12 bg-transparent z-50" />
+
+              {/* Logo sobre o vídeo */}
+              <div className="absolute top-4 right-4 z-50 pointer-events-none opacity-80">
+                <img 
+                  src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+                  alt="GridPlay Logo" 
+                  className="w-[140px] h-auto drop-shadow-2xl"
+                  referrerPolicy="no-referrer"
                 />
-              ) : (
-                <iframe 
-                  src={video.embed_url.replace('/view', '/preview')} 
-                  className="w-full h-full"
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                  title={video.title}
-                />
-              )}
+              </div>
 
               {/* Botão de lembrete de progresso (Como o Drive não permite ler o tempo, o usuário pode marcar que parou aqui) */}
               <div className="absolute bottom-16 right-4 z-40 opacity-0 group-hover:opacity-100 transition-opacity">
