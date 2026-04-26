@@ -250,8 +250,9 @@ const Carousel = ({ title, videos }: { title: string, videos: Video[], key?: str
   );
 };
 
-const AdBanner = ({ profile, type = 'normal', adSlot = 'auto' }: { profile: Profile | null, type?: 'normal' | 'discreet', adSlot?: string }) => {
-  // Completely hide ads for active premium subscribers (Plan is not FREE and status is ACTIVE)
+const AdBanner = ({ profile, type = 'normal', adSlot = '6214191157' }: { profile: Profile | null, type?: 'normal' | 'discreet', adSlot?: string }) => {
+  // Completely hide ads for active premium subscribers
+  // A subscriber is premium if: exists, plan is NOT FREE, and status is ACTIVE
   const isPremium = profile && profile.plan !== 'FREE' && profile.subscription_status === 'ACTIVE';
   const shouldShow = !isPremium;
   
@@ -260,48 +261,58 @@ const AdBanner = ({ profile, type = 'normal', adSlot = 'auto' }: { profile: Prof
 
   useEffect(() => {
     if (shouldShow && adRef.current && !pushedRef.current) {
-      const timer = setTimeout(() => {
+      const loadAd = () => {
         try {
-          if (adRef.current && !pushedRef.current) {
-            const status = adRef.current.getAttribute('data-adsbygoogle-status');
-            if (status === 'done') {
+          if (typeof window !== 'undefined' && adRef.current && !pushedRef.current) {
+            // Check if ad is already loaded
+            if (adRef.current.getAttribute('data-adsbygoogle-status') === 'done') {
               pushedRef.current = true;
               return;
             }
 
-            const width = adRef.current.offsetWidth;
-            if (width > 0) {
+            // Ensure element is visible and has width
+            const rect = adRef.current.getBoundingClientRect();
+            if (rect.width > 0) {
               // @ts-ignore
               (window.adsbygoogle = window.adsbygoogle || []).push({});
               pushedRef.current = true;
+              console.log(`AdSense: Ad pushed for slot ${adSlot}`);
+            } else {
+              // Retry in a bit if not ready
+              setTimeout(loadAd, 500);
             }
           }
         } catch (e) {
-          console.error("AdSense error:", e);
+          console.error("AdSense Error for slot " + adSlot + ":", e);
         }
-      }, 1000); // Increased delay to ensure layout is ready
+      };
 
+      // Delay initialization to ensure DOM is ready and styles are applied
+      const timer = setTimeout(loadAd, 1000); 
       return () => clearTimeout(timer);
     }
-  }, [shouldShow]);
+  }, [shouldShow, adSlot]);
 
   if (!shouldShow) return null;
 
   return (
     <div className={cn(
-      "w-full flex justify-center my-12 px-4",
-      type === 'discreet' ? "opacity-60 scale-95 hover:opacity-100 transition-opacity" : "opacity-100"
+      "w-full flex justify-center my-12 px-4 select-none",
+      type === 'discreet' ? "opacity-60 scale-95 hover:opacity-100 transition-all duration-500" : "opacity-100"
     )}>
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full max-w-5xl flex flex-col items-center justify-center min-h-[120px] relative overflow-hidden backdrop-blur-sm">
-        <span className="absolute top-2 right-4 text-[8px] text-gray-600 font-bold uppercase tracking-widest">Publicidade</span>
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full max-w-5xl flex flex-col items-center justify-center min-h-[120px] relative overflow-hidden backdrop-blur-sm shadow-2xl">
+        <span className="absolute top-2 right-4 text-[7px] text-gray-500 font-bold uppercase tracking-[0.2em] z-20">Espaço Publicitário</span>
         
-        {/* Placeholder for when ad is loading or not available */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-          <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">Espaço Publicitário</div>
-        </div>
+        {/* Ad Placeholder (shimmer style) */}
+        {!pushedRef.current && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/5 animate-pulse">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/10 italic">Google AdSense</div>
+          </div>
+        )}
 
-        <ins ref={adRef} className="adsbygoogle"
-             style={{ display: 'block', width: '100%', minWidth: '250px', minHeight: '90px', position: 'relative', zIndex: 1 }}
+        <ins ref={adRef} 
+             className="adsbygoogle"
+             style={{ display: 'block', width: '100%', minHeight: '90px', position: 'relative', zIndex: 10 }}
              data-ad-client="ca-pub-7197376783143404"
              data-ad-slot={adSlot}
              data-ad-format="auto"
