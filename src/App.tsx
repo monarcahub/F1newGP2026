@@ -1046,9 +1046,10 @@ const LandingPage = () => {
                   R$ 30,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
                 </div>
                 <a 
-                  href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=u3qbgrl1" 
-                  onClick={(e) => e.preventDefault()}
-                  className="hotmart-fb hotmart__button-checkout w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity"
+                  href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity"
                 >
                   ASSINAR MENSAL
                 </a>
@@ -1086,9 +1087,10 @@ const LandingPage = () => {
                   </li>
                 </ul>
                 <a 
-                  href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=dx3xefic" 
-                  onClick={(e) => e.preventDefault()}
-                  className="hotmart-fb hotmart__button-checkout w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity"
+                  href="https://pay.hotmart.com/C102920427K?off=dx3xefic" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity"
                 >
                   ASSINAR ANUAL
                 </a>
@@ -2976,9 +2978,10 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=u3qbgrl1"
-              onClick={(e) => e.preventDefault()}
-              className="hotmart-fb hotmart__button-checkout w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 text-center block"
+              href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 text-center block"
             >
               Assinar Mensal
             </a>
@@ -3008,9 +3011,10 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=dx3xefic"
-              onClick={(e) => e.preventDefault()}
-              className="hotmart-fb hotmart__button-checkout w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
+              href="https://pay.hotmart.com/C102920427K?off=dx3xefic"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
             >
               Assinar Anual
             </a>
@@ -3463,66 +3467,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Import Hotmart Widget
-    const importHotmart = () => {
-      if (document.querySelector('script[src*="hotmart.com"]')) return;
-      
-      const imported = document.createElement('script');
-      imported.src = 'https://static.hotmart.com/checkout/widget.min.js';
-      imported.async = true;
-      document.head.appendChild(imported);
-      
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.type = 'text/css';
-      link.href = 'https://static.hotmart.com/css/hotmart-fb.min.css';
-      document.head.appendChild(link);
-
-      // Custom Styles for Hotmart Buttons to match Brand Blue
-      const style = document.createElement('style');
-      style.innerHTML = `
-        /* Remove Hotmart's default background images and reset layout */
-        .hotmart-fb.hotmart__button-checkout {
-          background-image: none !important;
-          background: none !important; /* Extra safety */
-          border: none !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          text-decoration: none !important;
-          transition: all 0.3s ease !important;
-        }
-        
-        /* Ensure the Mensal button is our brand blue */
-        .hotmart-fb.hotmart__button-checkout.bg-f1-blue {
-          background-color: #26A9E0 !important;
-          background: #26A9E0 !important;
-          color: white !important;
-        }
-        
-        /* Ensure the Annual button remains citrus yellow */
-        .hotmart-fb.hotmart__button-checkout.bg-citrus-yellow {
-          background-color: #FFE600 !important;
-          background: #FFE600 !important;
-          color: black !important;
-        }
-
-        .hotmart-fb.hotmart__button-checkout:hover {
-          opacity: 0.9 !important;
-          transform: translateY(-2px) !important;
-          box-shadow: 0 10px 20px -5px rgba(38, 169, 224, 0.4) !important;
-        }
-
-        /* Hide the default Hotmart green buy image and any other injected icons */
-        .hotmart-fb.hotmart__button-checkout img,
-        .hotmart-fb.hotmart__button-checkout i,
-        .hotmart-fb.hotmart__button-checkout span:not(.text-content) {
-          display: none !important;
-        }
-      `;
-      document.head.appendChild(style);
-    };
-    importHotmart();
+    // Initializing standard state
   }, []);
 
   useEffect(() => {
