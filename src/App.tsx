@@ -49,6 +49,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
   
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    sessionStorage.removeItem('upgrade_prompted_once');
     navigate('/login');
   };
 
@@ -124,12 +125,18 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
           ) : (
             <div className="flex items-center gap-4">
               <Link to="/login" className="hidden md:block text-white text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Entrar</Link>
-              <Link 
-                to="/login" 
+              <button 
+                onClick={() => {
+                  if (window.location.pathname !== '/') {
+                    window.location.href = '/#plans';
+                  } else {
+                    document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 className="bg-white text-black px-4 md:px-6 py-2 rounded-sm text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors"
               >
                 Assine Agora
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -873,19 +880,19 @@ const LandingPage = () => {
             <span className="text-white/80 text-[10px] uppercase font-black tracking-widest mb-2">A PARTIR DE</span>
             <div className="flex items-start text-white">
               <span className="text-2xl font-black mt-2 mr-1">R$</span>
-              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">14,95</span>
+              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">14</span>
               <span className="text-xl font-bold mt-4 md:mt-6 ml-1 opacity-70">/MÊS*</span>
             </div>
             <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">SÓ PARA PLANOS ANUAIS</span>
           </div>
           
           <div className="flex flex-col items-center gap-6">
-            <Link 
-              to="/login" 
+            <button 
+              onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
               className="bg-white text-black px-20 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-2xl"
             >
               ASSINE AGORA
-            </Link>
+            </button>
             
             <p className="text-[9px] md:text-[10px] text-white/40 max-w-md font-bold uppercase tracking-wider">
               *Oferta válida até {promoDate}. Desconto válido para o primeiro ano. <a href="#" className="underline">Aplicam termos</a>.
@@ -946,7 +953,7 @@ const LandingPage = () => {
       </div>
 
       {/* Plans Section */}
-      <div className="py-24 px-4 md:px-12 relative">
+      <div id="plans" className="py-24 px-4 md:px-12 relative">
         <div className="relative z-10 flex flex-col items-center">
           <h2 className="text-3xl md:text-5xl font-black mb-4 italic tracking-tighter uppercase text-center">
             ESCOLHA O MELHOR PLANO PARA VOCÊ
@@ -1036,9 +1043,15 @@ const LandingPage = () => {
                   </li>
                 </ul>
                 <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">
-                  R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+                  R$ 30,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
                 </div>
-                <Link to="/login" className="w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity">ASSINAR MENSAL</Link>
+                <a 
+                  href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=u3qbgrl1" 
+                  onClick={(e) => e.preventDefault()}
+                  className="hotmart-fb hotmart__button-checkout w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity"
+                >
+                  ASSINAR MENSAL
+                </a>
               </div>
             )}
 
@@ -1072,7 +1085,13 @@ const LandingPage = () => {
                     Prioridade em novos conteúdos
                   </li>
                 </ul>
-                <Link to="/login" className="w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity">ASSINAR ANUAL</Link>
+                <a 
+                  href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=dx3xefic" 
+                  onClick={(e) => e.preventDefault()}
+                  className="hotmart-fb hotmart__button-checkout w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity"
+                >
+                  ASSINAR ANUAL
+                </a>
               </div>
             )}
           </div>
@@ -1149,7 +1168,29 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [hasPromptedUpgrade, setHasPromptedUpgrade] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // If the user reaches Home and is FREE, show the upgrade prompt
+    if (profile && profile.plan === 'FREE' && !loading) {
+      const promptedBefore = sessionStorage.getItem('upgrade_prompted_once');
+      if (!promptedBefore) {
+        // Adding a small delay to ensure UI is ready
+        const timer = setTimeout(() => {
+          setShowPlansModal(true);
+          sessionStorage.setItem('upgrade_prompted_once', 'true');
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [profile, loading]);
+
+  useEffect(() => {
+    const handleCloseModal = () => setShowPlansModal(false);
+    window.addEventListener('closePlansModal', handleCloseModal);
+    return () => window.removeEventListener('closePlansModal', handleCloseModal);
+  }, []);
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -1176,7 +1217,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   // Re-enable landing page as home for visitors as requested
   if (!profile) return <LandingPage />;
 
-  const featured = videos[0];
+  const featured = videos[videos.length - 1];
   const categories = Array.from(new Set(videos.map(v => v.category))) as string[];
 
   const handleWatchClick = (videoId: string) => {
@@ -1219,10 +1260,24 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                 <span className="text-gray-400 text-xs md:text-sm font-bold uppercase tracking-widest">{featured.year} • {featured.category}</span>
               </div>
               
-              <h1 className="text-4xl md:text-8xl font-black mb-6 italic tracking-tighter uppercase leading-[0.9] drop-shadow-2xl">
+              <h1 className="text-4xl md:text-8xl font-black mb-4 italic tracking-tighter uppercase leading-[0.9] drop-shadow-2xl">
                 {featured.title}
               </h1>
               
+              <div className="flex items-center gap-4 mb-8">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-citrus-yellow font-black uppercase tracking-[0.2em]">A partir de</span>
+                  <div className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
+                    R$ 14,00<span className="text-sm md:text-lg font-normal text-gray-400 not-italic ml-1">/mês</span>
+                  </div>
+                </div>
+                <div className="h-10 w-px bg-white/20 ml-4" />
+                <div className="flex flex-col ml-4">
+                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Plano Anual</span>
+                  <span className="text-white font-bold text-xs uppercase tracking-widest">2 Meses Grátis</span>
+                </div>
+              </div>
+
               <p className="text-gray-300 text-sm md:text-xl mb-10 max-w-2xl font-medium opacity-90 line-clamp-3 leading-relaxed">
                 {featured.description}
               </p>
@@ -1698,7 +1753,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
     );
   }
 
-  const featuredVideo = videos[0];
+  const featuredVideo = videos[videos.length - 1];
   const episodes = videos;
 
   const handleWatchClick = (videoId: string) => {
@@ -2846,7 +2901,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               {selectedYear ? `Temporada ${selectedYear}` : 'Temporada Individual'}
             </h3>
             <div className="text-3xl font-black text-white italic tracking-tighter mb-4">
-              R$ 10<span className="text-xs font-normal text-gray-500 not-italic ml-1">/mês</span>
+              R$ 10<span className="text-xs font-normal text-gray-500 not-italic ml-1">/por temporada</span>
             </div>
             <ul className="text-[10px] md:text-xs text-gray-400 space-y-2 font-medium">
               <li className="flex items-center justify-center md:justify-start gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acesso VIP via Site/Player</li>
@@ -2854,12 +2909,26 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             </ul>
           </div>
 
-          <button 
-            onClick={handleSeasonalPurchase}
-            className="w-full md:w-auto bg-white text-black font-black px-12 py-6 rounded-full text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center whitespace-nowrap"
-          >
-            ADQUIRIR ACESSO AGORA
-          </button>
+          <div className="flex flex-col gap-3 w-full md:w-auto">
+            <button 
+              onClick={handleSeasonalPurchase}
+              className="w-full md:w-auto bg-white text-black font-black px-12 py-6 rounded-full text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] text-center whitespace-nowrap"
+            >
+              ADQUIRIR {selectedYear || 'AGORA'}
+            </button>
+            <Link 
+              to="/archives"
+              onClick={() => {
+                if (isModal) {
+                  const event = new CustomEvent('closePlansModal');
+                  window.dispatchEvent(event);
+                }
+              }}
+              className="text-[10px] text-gray-500 font-bold uppercase tracking-widest hover:text-white transition-colors text-center"
+            >
+              Ver todas as temporadas
+            </Link>
+          </div>
         </div>
       </div>
       
@@ -2898,7 +2967,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest leading-none">Acesso Premium Total</p>
             </div>
             <div className="text-4xl font-black text-white mb-8 italic tracking-tighter">
-              R$ 30<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+              R$ 30,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
             </div>
             <ul className="text-xs text-gray-300 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 - Atual</li>
@@ -2907,10 +2976,9 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1&bid=1776637567387"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 text-center block"
+              href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=u3qbgrl1"
+              onClick={(e) => e.preventDefault()}
+              className="hotmart-fb hotmart__button-checkout w-full bg-f1-blue text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 text-center block"
             >
               Assinar Mensal
             </a>
@@ -2940,10 +3008,9 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?bid=1776637121004"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
+              href="https://pay.hotmart.com/C102920427K?checkoutMode=2&off=dx3xefic"
+              onClick={(e) => e.preventDefault()}
+              className="hotmart-fb hotmart__button-checkout w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
             >
               Assinar Anual
             </a>
@@ -2978,6 +3045,8 @@ const Account = ({ profile }: { profile: Profile | null }) => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  const [showPlansModal, setShowPlansModal] = useState(false);
+
   if (!profile) return <Navigate to="/login" />;
 
   const handleUpdatePassword = async (e: FormEvent) => {
@@ -3006,7 +3075,19 @@ const Account = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <div className="min-h-screen pt-32 pb-20 px-4">
-      <div className="max-w-md mx-auto bg-dark-card border border-white/5 rounded-[2rem] p-8 md:p-12 shadow-2xl">
+      <div className="max-w-md mx-auto bg-dark-card border border-white/5 rounded-[2rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+        {/* Upgrade Badge for Free Users */}
+        {profile.plan === 'FREE' && (
+          <div className="absolute top-0 right-0 p-4">
+            <button 
+              onClick={() => setShowPlansModal(true)}
+              className="bg-citrus-yellow text-black text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full animate-pulse"
+            >
+              UPGRADE PARA PREMIUM
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 rounded-full bg-f1-blue/20 flex items-center justify-center">
             <User className="text-f1-blue" size={24} />
@@ -3073,7 +3154,7 @@ const Account = ({ profile }: { profile: Profile | null }) => {
           <div className="pt-8 border-t border-white/5">
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
               <span>Plano Atual</span>
-              <span className="text-citrus-yellow">{profile.plan}</span>
+              <span className={cn("font-black", profile.plan === 'FREE' ? "text-gray-400" : "text-citrus-yellow")}>{profile.plan}</span>
             </div>
             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-500 mt-2">
               <span>Status</span>
@@ -3081,9 +3162,45 @@ const Account = ({ profile }: { profile: Profile | null }) => {
                 {profile.subscription_status === 'ACTIVE' ? "ATIVO" : "INATIVO"}
               </span>
             </div>
+            {profile.plan === 'FREE' && (
+              <button 
+                onClick={() => setShowPlansModal(true)}
+                className="w-full mt-6 bg-white/5 border border-white/10 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-colors"
+              >
+                SEJA PREMIUM - ACESSO COMPLETO
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showPlansModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlansModal(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-6xl bg-black rounded-[3rem] overflow-y-auto max-h-[95vh] shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10 p-8 md:p-20"
+            >
+              <button 
+                onClick={() => setShowPlansModal(false)}
+                className="absolute top-8 right-8 text-gray-500 hover:text-white z-20 transition-colors"
+              >
+                <X size={28} />
+              </button>
+              <Checkout isModal profile={profile} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -3344,6 +3461,69 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Import Hotmart Widget
+    const importHotmart = () => {
+      if (document.querySelector('script[src*="hotmart.com"]')) return;
+      
+      const imported = document.createElement('script');
+      imported.src = 'https://static.hotmart.com/checkout/widget.min.js';
+      imported.async = true;
+      document.head.appendChild(imported);
+      
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = 'https://static.hotmart.com/css/hotmart-fb.min.css';
+      document.head.appendChild(link);
+
+      // Custom Styles for Hotmart Buttons to match Brand Blue
+      const style = document.createElement('style');
+      style.innerHTML = `
+        /* Remove Hotmart's default background images and reset layout */
+        .hotmart-fb.hotmart__button-checkout {
+          background-image: none !important;
+          background: none !important; /* Extra safety */
+          border: none !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          text-decoration: none !important;
+          transition: all 0.3s ease !important;
+        }
+        
+        /* Ensure the Mensal button is our brand blue */
+        .hotmart-fb.hotmart__button-checkout.bg-f1-blue {
+          background-color: #26A9E0 !important;
+          background: #26A9E0 !important;
+          color: white !important;
+        }
+        
+        /* Ensure the Annual button remains citrus yellow */
+        .hotmart-fb.hotmart__button-checkout.bg-citrus-yellow {
+          background-color: #FFE600 !important;
+          background: #FFE600 !important;
+          color: black !important;
+        }
+
+        .hotmart-fb.hotmart__button-checkout:hover {
+          opacity: 0.9 !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 10px 20px -5px rgba(38, 169, 224, 0.4) !important;
+        }
+
+        /* Hide the default Hotmart green buy image and any other injected icons */
+        .hotmart-fb.hotmart__button-checkout img,
+        .hotmart-fb.hotmart__button-checkout i,
+        .hotmart-fb.hotmart__button-checkout span:not(.text-content) {
+          display: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    };
+    importHotmart();
+  }, []);
 
   useEffect(() => {
     // Check initial session
