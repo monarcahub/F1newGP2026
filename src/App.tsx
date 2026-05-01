@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Play, 
   Info, 
@@ -375,6 +375,49 @@ const CookieBanner = () => {
       </div>
     </motion.div>
   );
+};
+
+const PixelTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Meta Pixel Base Code
+    if (!import.meta.env.VITE_FB_PIXEL_ID) return;
+
+    const pixelId = import.meta.env.VITE_FB_PIXEL_ID;
+
+    // @ts-ignore
+    if (!window.fbq) {
+      // @ts-ignore
+      !(function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = "2.0";
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+
+      // @ts-ignore
+      window.fbq("init", pixelId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.VITE_FB_PIXEL_ID && (window as any).fbq) {
+      (window as any).fbq("track", "PageView");
+    }
+  }, [location.pathname]);
+
+  return null;
 };
 
 const Chatwoot = ({ profile }: { profile: Profile | null }) => {
@@ -3641,6 +3684,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <PixelTracker />
       <div className="min-h-screen bg-dark-bg text-white font-sans flex flex-col">
         <Navbar profile={profile} />
         <main className="flex-grow">
