@@ -56,7 +56,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
   const menuItems = [
     { label: 'Home', path: '/' },
     { label: 'Temporada 2026', path: '/season/2026' },
-    { label: 'Documentários', path: '/maintenance' },
+    { label: 'PlayStream', path: '/playstream' },
     { label: 'Arquivos', path: '/archives' },
   ];
 
@@ -716,15 +716,9 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
 
 const HighlightsSlider = () => {
   const highlights = [
-    { title: "F2", subtitle: "O Caminho para a Glória", image: "https://i.ibb.co/35PQt9qN/f2-2026.jpg" },
-    { title: "F3", subtitle: "Onde Nascem os Campeões", image: "https://i.ibb.co/BdqfmpS/f3-2026.jpg" },
-    { title: "F1 Academy", subtitle: "A Nova Geração Feminina", image: "https://i.ibb.co/6RBN8gcW/f1academy-2026.jpg" },
-    { title: "ONBOARD CAMERA", subtitle: "Sinta a Velocidade de Dentro", image: "https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" },
-    { title: "F1: O Filme", subtitle: "A Emoção das Telas", image: "https://i.ibb.co/nq4yMJvy/f1-filme.jpg" },
-    { title: "Drive to Survive 8", subtitle: "Bastidores da Velocidade", image: "https://i.ibb.co/qYx9MvHv/dtv-8.jpg" },
-    { title: "Temporada 2012", subtitle: "A Batalha Épica", image: "https://i.ibb.co/pBr66ZbP/f1-2012.jpg" },
-    { title: "Temporada 2021", subtitle: "O Duelo Histórico", image: "https://i.ibb.co/1twFwN80/f1-2021.jpg" },
-    { title: "Temporada 1950", subtitle: "O Início de Tudo", image: "https://i.ibb.co/DDS3cyTx/f1-1950.jpg" }
+    { title: "Filmes", subtitle: "As maiores produções do automobilismo", image: "https://i.ibb.co/nq4yMJvy/f1-filme.jpg" },
+    { title: "Séries", subtitle: "Bastidores e dramas das pistas", image: "https://i.ibb.co/qYx9MvHv/dtv-8.jpg" },
+    { title: "Documentários", subtitle: "A história real de lendas e equipes", image: "https://i.ibb.co/BdqfmpS/f3-2026.jpg" }
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -737,9 +731,20 @@ const HighlightsSlider = () => {
   }, [highlights.length]);
 
   return (
-    <div className="w-full py-24 bg-black overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 md:px-12">
-        <h2 className="text-3xl font-black mb-12 italic uppercase tracking-tighter text-center md:text-left">Destaques Exclusivos</h2>
+    <div className="w-full py-24 bg-black overflow-hidden relative">
+      {/* Premium Notification Belt */}
+      <div className="absolute top-0 left-0 w-full bg-f1-blue py-3 z-30 overflow-hidden shadow-2xl">
+        <div className="flex animate-marquee-fast whitespace-nowrap">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <span key={i} className="text-[10px] font-black uppercase tracking-[0.2em] text-white mx-8">
+              para ver filmes, series e documentários, é necessário login com uma conta Premium •
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8">
+        <h2 className="text-3xl font-black mb-12 italic uppercase tracking-tighter text-center md:text-left">PlayStream Originals</h2>
         
         <div className="relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden group">
           <AnimatePresence mode="wait">
@@ -765,7 +770,7 @@ const HighlightsSlider = () => {
                   transition={{ delay: 0.2 }}
                   className="text-citrus-yellow font-black tracking-widest text-sm mb-4 uppercase"
                 >
-                  Em Breve / Disponível
+                  Exclusivo para Assinantes
                 </motion.span>
                 <motion.h3 
                   initial={{ opacity: 0, y: 20 }}
@@ -782,6 +787,15 @@ const HighlightsSlider = () => {
                   className="text-xl text-gray-300 max-w-xl font-medium"
                 >
                   {highlights[currentIndex].subtitle}
+                </motion.p>
+                
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="mt-8 text-f1-blue font-black uppercase text-[10px] tracking-[0.2em] bg-white/10 border border-white/20 px-6 py-2 rounded-full w-fit backdrop-blur-md"
+                >
+                  Para ver filmes, series e documentários, é necessário login com uma conta Premium
                 </motion.p>
               </div>
             </motion.div>
@@ -1530,6 +1544,11 @@ const Home = ({ profile }: { profile: Profile | null }) => {
           </div>
         ))}
 
+        {/* Highlights Section */}
+        <div className="-mx-4 md:-mx-12">
+          <HighlightsSlider />
+        </div>
+
         {/* Telegram VIP Section - Polished */}
         {profile && (
           <div className={cn(
@@ -2181,143 +2200,156 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
   );
 };
 
-const Maintenance = () => {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [targetDate, setTargetDate] = useState<Date | null>(null);
+const PlayStream = ({ profile }: { profile: Profile | null }) => {
+  const navigate = useNavigate();
+  const [contents, setContents] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+  const isPremium = profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE';
 
   useEffect(() => {
-    const fetchTargetDate = async () => {
-      // Clear legacy localStorage
-      localStorage.removeItem('maintenance_target_date');
-      
-      // Default fixed fallback (e.g., June 30, 2026) to avoid "resetting" on every F5
-      const FIXED_FALLBACK = new Date('2026-06-30T00:00:00Z');
-      
-      try {
-        const { data, error } = await supabase
-          .from('site_settings')
-          .select('value')
-          .eq('key', 'maintenance_end_date')
-          .maybeSingle();
+    if (!isPremium) return;
 
-        if (error) {
-          // If error 205 (Schema cache), we catch it here
-          console.error("Supabase API cannot find the table yet. Error:", error.message);
-          setTargetDate(FIXED_FALLBACK);
-          return;
-        }
+    const fetchPlayStreamContent = async () => {
+      setLoading(true);
+      // Fetching contents categorized as Movies, Series, or Documentaries
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .in('category', ['Filmes', 'Séries', 'Documentários', 'Filme', 'Série', 'Documentário'])
+        .order('created_at', { ascending: false });
 
-        if (data && data.value) {
-          console.log("Success! Date fetched from Supabase:", data.value);
-          setTargetDate(new Date(data.value));
-        } else {
-          console.warn("Table exists but key 'maintenance_end_date' is missing. Using fixed fallback.");
-          setTargetDate(FIXED_FALLBACK);
-        }
-      } catch (err) {
-        console.error("Connection failed. Using fixed fallback:", err);
-        setTargetDate(FIXED_FALLBACK);
-      }
+      if (data) setContents(data);
+      setLoading(false);
     };
 
-    fetchTargetDate();
-  }, []);
+    fetchPlayStreamContent();
+  }, [isPremium]);
 
-  useEffect(() => {
-    if (!targetDate) return;
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-bg px-4 py-20 text-center relative overflow-hidden">
+        {/* Background elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-f1-blue rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-citrus-yellow rounded-full blur-[120px]" />
+        </div>
 
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      const distance = targetDate.getTime() - now;
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 max-w-2xl bg-dark-card border border-white/10 p-12 rounded-[3rem] shadow-2xl backdrop-blur-xl"
+        >
+          <div className="w-20 h-20 bg-f1-blue/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-f1-blue/20">
+            <Lock className="text-f1-blue" size={32} />
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-black mb-6 italic tracking-tighter uppercase leading-none">
+            Acesso <span className="text-f1-blue">Premium</span>
+          </h1>
+          
+          <p className="text-gray-400 text-sm md:text-lg mb-10 max-w-md mx-auto font-medium leading-relaxed italic">
+            O PlayStream (filmes, séries e documentários) está disponível exclusivamente para nossos assinantes Premium.
+          </p>
 
-      if (distance < 0) {
-        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-      }
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button 
+              onClick={() => {
+                if (!profile) {
+                  navigate('/login');
+                } else {
+                  // Trigger plans modal or navigate to checkout
+                  const event = new CustomEvent('openPlansModal');
+                  window.dispatchEvent(event);
+                }
+              }}
+              className="w-full sm:w-auto bg-white text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+            >
+              ASSINAR AGORA
+            </button>
+            <Link to="/" className="text-gray-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">
+              Voltar para a Home
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
-      return {
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000)
-      };
-    };
-
-    setTimeLeft(calculateTimeLeft());
-
-    const timer = setInterval(() => {
-      const newTimeLeft = calculateTimeLeft();
-      setTimeLeft(newTimeLeft);
-      
-      if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
-        clearInterval(timer);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [targetDate]);
+  const handleWatch = (video: Video) => {
+    if (video.telegram_url) {
+      window.open(video.telegram_url, '_blank');
+    } else {
+      navigate(`/watch/${video.id}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-dark-bg px-4 py-20 text-center relative overflow-hidden">
-      {/* Background elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-f1-blue rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-citrus-yellow rounded-full blur-[120px]" />
-      </div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 max-w-4xl"
-      >
-        <img 
-          src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
-          alt="GRIDPLAY" 
-          className="h-16 md:h-24 object-contain mx-auto mb-12"
-          referrerPolicy="no-referrer"
-        />
-        
-        <div className="inline-block bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest mb-8 shadow-xl">
-          Grande Atualização em Curso
-        </div>
-        
-        <h1 className="text-4xl md:text-7xl font-black mb-8 italic tracking-tighter uppercase leading-none">
-          Algo <span className="text-f1-blue">Melhor</span> Está Chegando
-        </h1>
-        
-        <p className="text-gray-400 text-sm md:text-xl mb-16 max-w-2xl mx-auto font-medium leading-relaxed">
-          Estamos em processo de atualização para trazer uma plataforma <span className="text-white font-bold">mais rápida, moderna e completa</span> para todos os fãs. 
-          Quem tiver paciência será recompensado com uma experiência sem precedentes no mundo da F1.
-        </p>
-
-        {/* Countdown Timer */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-16">
-          {[
-            { label: 'Dias', value: timeLeft.days },
-            { label: 'Horas', value: timeLeft.hours },
-            { label: 'Minutos', value: timeLeft.minutes },
-            { label: 'Segundos', value: timeLeft.seconds }
-          ].map((item, idx) => (
-            <div key={idx} className="bg-white/5 backdrop-blur-md border border-white/10 p-6 md:p-8 rounded-3xl">
-              <div className="text-4xl md:text-6xl font-black text-white italic tracking-tighter mb-2">
-                {String(item.value).padStart(2, '0')}
-              </div>
-              <div className="text-[10px] md:text-xs text-gray-500 font-black uppercase tracking-[0.2em]">
-                {item.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-          <Link to="/" className="text-white text-sm font-bold uppercase tracking-widest hover:text-citrus-yellow transition-colors">
-            Voltar para a Home
-          </Link>
-          <div className="h-px w-12 bg-white/10 hidden sm:block" />
-          <p className="text-gray-500 text-xs font-medium italic">
-            "A paciência é a chave para a vitória."
+    <div className="min-h-screen bg-black pt-32 pb-24">
+      <div className="max-w-7xl mx-auto px-6 md:px-12">
+        <header className="mb-16">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="h-px w-12 bg-f1-blue" />
+            <span className="text-f1-blue font-black tracking-[0.4em] text-[10px] uppercase">Originals & Movies</span>
+          </div>
+          <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter uppercase leading-[0.8] mb-8">
+            Play<span className="text-white/20">Stream</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
+            Filmes, séries e documentários biográficos exclusivos. O melhor do cinema e televisão sobre automobilismo.
           </p>
-        </div>
-      </motion.div>
+        </header>
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-12 h-12 border-4 border-f1-blue/20 border-t-f1-blue rounded-full animate-spin" />
+            <p className="text-gray-500 font-black text-[10px] uppercase tracking-widest">Carregando Acervo...</p>
+          </div>
+        ) : contents.length === 0 ? (
+          <div className="py-24 text-center border border-white/10 rounded-[3rem] bg-white/5">
+             <p className="text-gray-500 font-bold italic">Nenhum conteúdo disponível no momento. Volte em breve!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {contents.map((item) => (
+              <motion.div 
+                key={item.id}
+                whileHover={{ y: -10 }}
+                className="group cursor-pointer"
+                onClick={() => handleWatch(item)}
+              >
+                <div className="relative aspect-[16/9] md:aspect-[2/3] rounded-3xl overflow-hidden mb-4 border border-white/10 group-hover:border-f1-blue/50 transition-all shadow-2xl">
+                  <img 
+                    src={item.thumbnail_url} 
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
+                  
+                  {/* Category Badge */}
+                  <div className="absolute top-4 left-4 bg-f1-blue text-white text-[8px] font-black px-3 py-1 rounded-full uppercase italic tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                    {item.category}
+                  </div>
+
+                  {/* Play Icon Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
+                      <Play className="text-white fill-current translate-x-0.5" size={24} />
+                    </div>
+                  </div>
+                </div>
+                
+                <h3 className="text-white font-black italic tracking-tighter uppercase text-lg mb-1 group-hover:text-f1-blue transition-colors">
+                  {item.title}
+                </h3>
+                <p className="text-gray-500 text-[10px] font-medium uppercase tracking-widest leading-none">
+                  Lançamento {item.year}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -2472,24 +2504,43 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
         <div className="aspect-video w-full bg-dark-card rounded-lg overflow-hidden shadow-2xl mb-8 relative group">
           {accessGranted ? (
-            <div className="relative w-full h-full overflow-hidden bg-black">
-              {/* Container de recorte para ocultar controles superiores do player (botão de abrir em nova janela do Drive) */}
-              <div className="w-full h-full" style={{ marginTop: '-48px', height: 'calc(100% + 48px)' }}>
-                {video.embed_url.includes('<iframe') ? (
-                  <div 
-                    className="w-full h-full"
-                    dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace('<iframe', '<iframe allow="autoplay; fullscreen" style="border:none; width:100%; height:100%;"') }}
-                  />
-                ) : (
-                  <iframe 
-                    src={video.embed_url.replace('/view', '/preview')} 
-                    className="w-full h-full border-none"
-                    allow="autoplay; fullscreen"
-                    allowFullScreen
-                    title={video.title}
-                  />
-                )}
-              </div>
+            <div className="relative w-full h-full overflow-hidden bg-black flex items-center justify-center">
+              {video.telegram_url && (video.embed_url === 'https://telegram.org' || !video.embed_url) ? (
+                <div className="text-center p-8">
+                  <div className="w-24 h-24 bg-f1-blue/20 rounded-full flex items-center justify-center mb-6 mx-auto border border-f1-blue/30">
+                    <Send className="text-f1-blue" size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4">Disponível no Telegram</h3>
+                  <p className="text-gray-400 mb-8 max-w-sm mx-auto text-sm">Este conteúdo é transmitido via Telegram para garantir a melhor qualidade e estabilidade.</p>
+                  <a 
+                    href={video.telegram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-3 bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+                  >
+                    ABRIR NO TELEGRAM
+                    <ExternalLink size={16} />
+                  </a>
+                </div>
+              ) : (
+                /* Container de recorte para ocultar controles superiores do player (botão de abrir em nova janela do Drive) */
+                <div className="w-full h-full" style={{ marginTop: '-48px', height: 'calc(100% + 48px)' }}>
+                  {video.embed_url.includes('<iframe') ? (
+                    <div 
+                      className="w-full h-full"
+                      dangerouslySetInnerHTML={{ __html: video.embed_url.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"').replace('<iframe', '<iframe allow="autoplay; fullscreen" style="border:none; width:100%; height:100%;"') }}
+                    />
+                  ) : (
+                    <iframe 
+                      src={video.embed_url.replace('/view', '/preview')} 
+                      className="w-full h-full border-none"
+                      allow="autoplay; fullscreen"
+                      allowFullScreen
+                      title={video.title}
+                    />
+                  )}
+                </div>
+              )}
               
               {/* Overlay de segurança extra no topo */}
               <div className="absolute top-0 left-0 w-full h-12 bg-transparent z-50" />
@@ -3265,6 +3316,7 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     description: '',
     category: 'Temporada',
     embed_url: '',
+    telegram_url: '',
     status: 'PREMIUM' as Video['status'],
     thumbnail_url: ''
   });
@@ -3286,10 +3338,23 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
 
   const handleAddVideo = async (e: FormEvent) => {
     e.preventDefault();
-    const { data, error } = await supabase.from('videos').insert([newVideo]).select();
+    
+    // Fallback for embed_url if empty to avoid DB constraints if not yet nullable
+    const videoData = {
+      ...newVideo,
+      embed_url: newVideo.embed_url || 'https://telegram.org' // Useful placeholder if NULL is not allowed
+    };
+
+    const { data, error } = await supabase.from('videos').insert([videoData]).select();
+    if (error) {
+      console.error("Erro ao adicionar vídeo:", error.message);
+      alert("Erro ao adicionar vídeo: " + error.message);
+      return;
+    }
     if (data) {
       setVideos([data[0], ...videos]);
-      setNewVideo({ title: '', year: 2024, description: '', category: 'Temporada', embed_url: '', status: 'PREMIUM', thumbnail_url: '' });
+      setNewVideo({ title: '', year: 2024, description: '', category: 'Temporada', embed_url: '', telegram_url: '', status: 'PREMIUM', thumbnail_url: '' });
+      alert("Vídeo adicionado com sucesso!");
     }
   };
 
@@ -3375,7 +3440,12 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
                   value={newVideo.embed_url}
                   onChange={e => setNewVideo({...newVideo, embed_url: e.target.value})}
                   className="w-full bg-black border border-white/10 rounded-md px-4 py-2 text-sm"
-                  required
+                />
+                <input 
+                  placeholder="Telegram URL (Para Filmes/Séries)"
+                  value={newVideo.telegram_url}
+                  onChange={e => setNewVideo({...newVideo, telegram_url: e.target.value})}
+                  className="w-full bg-black border border-white/10 rounded-md px-4 py-2 text-sm"
                 />
                 <input 
                   placeholder="Thumbnail URL"
@@ -3697,7 +3767,7 @@ export default function App() {
             <Route path="/season/:year" element={<SeasonPage profile={profile} />} />
             <Route path="/admin" element={<AdminPanel profile={profile} />} />
             <Route path="/archives" element={<Archive profile={profile} />} />
-            <Route path="/maintenance" element={<Maintenance />} />
+            <Route path="/playstream" element={<PlayStream profile={profile} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

@@ -33,3 +33,14 @@
 .streaming-gradient {
   background: linear-gradient(to top, rgba(10, 10, 10, 1) 0%, rgba(10, 10, 10, 0) 100%);
 }
+
+@keyframes marquee-fast {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee-fast {
+  animation: marquee-fast 30s linear infinite;
+  display: flex;
+  width: fit-content;
+}

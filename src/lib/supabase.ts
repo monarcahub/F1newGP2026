@@ -23,6 +23,7 @@ export type Video = {
   description: string;
   category: string;
   embed_url: string;
+  telegram_url?: string;
   status: 'PREMIUM' | 'FREE' | 'ARCHIVED';
   thumbnail_url: string;
   created_at: string;
