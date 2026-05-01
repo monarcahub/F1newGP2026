@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent, useRef } from 'react';
+import React, { useState, useEffect, FormEvent, useRef, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   Play, 
@@ -31,6 +31,17 @@ import {
   Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area 
+} from 'recharts';
 import { supabase, type Profile, type Video, type Reaction, type Comment } from './lib/supabase';
 import { cn } from './lib/utils';
 
@@ -59,10 +70,6 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
     { label: 'PlayStream', path: '/playstream' },
     { label: 'Arquivos', path: '/archives' },
   ];
-
-  if (profile?.role === 'admin') {
-    menuItems.push({ label: 'Painel Admin', path: '/admin' });
-  }
 
   return (
     <>
@@ -110,17 +117,32 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
           </button>
 
           {profile ? (
-            <div className="flex items-center gap-2 md:gap-4">
-              <Link to="/account" className="text-gray-300 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-all">
-                <User size={18} />
-                <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Minha Conta</span>
-              </Link>
-              <button 
-                onClick={handleLogout} 
-                className="text-gray-400 hover:text-red-500 transition-colors p-2"
-              >
-                <LogOut size={20} />
-              </button>
+            <div className="flex items-center gap-2 md:gap-4 relative group">
+              <div className="flex items-center gap-2">
+                <Link to="/account" className="text-gray-300 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-all">
+                  <User size={18} />
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Minha Conta</span>
+                </Link>
+                <button 
+                  onClick={handleLogout} 
+                  className="text-gray-400 hover:text-red-500 transition-colors p-2"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+
+              {/* Admin Dropdown - Hover Trigger */}
+              {profile.role === 'admin' && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all py-2 z-50">
+                  <Link 
+                    to="/admin" 
+                    className="flex items-center gap-3 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    <Settings size={14} />
+                    Painel Admin
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-4">
@@ -204,6 +226,16 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
                     <User size={20} />
                     <span className="text-sm font-bold uppercase tracking-widest truncate">{profile.email}</span>
                   </div>
+                  {profile.role === 'admin' && (
+                    <Link 
+                      to="/admin" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-4 text-f1-blue font-bold uppercase tracking-widest text-sm"
+                    >
+                      <Settings size={20} />
+                      Painel Admin
+                    </Link>
+                  )}
                   <button 
                     onClick={handleLogout}
                     className="flex items-center gap-4 text-red-500 font-bold uppercase tracking-widest text-sm"
@@ -357,7 +389,7 @@ const CookieBanner = () => {
           <div className="flex-1">
             <h3 className="text-lg font-bold mb-2">Preferências de cookies</h3>
             <p className="text-sm text-gray-400 leading-relaxed">
-              Nós e nossas Afiliadas utilizamos terceiros para acessar e armazenar dados no seu dispositivo a fim de analisar o uso e aprimorar sua experiência, além de personalizar, mensurar e fornecer conteúdos e anúncios. Para obter mais informações, consulte nossa Política de Privacidade. Você pode Aceitar todos ou acessar Gerenciar cookies para mais opções.
+              Nós e nossas Afiliadas utilizamos terceiros para acessar e armazenar dados no seu dispositivo a fim de analisar o uso e aprimorar sua experiência, além de personalizar, mensurar e fornecer conteúdos e anúncios. Para obter mais informações, consulte nossa <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">Política de Privacidade</a>. Você pode Aceitar todos ou acessar Gerenciar cookies para mais opções.
             </p>
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -833,8 +865,8 @@ const Footer = () => {
         Projeto institucional em apoio a sustentabilidade, tecnologia e esporte - MonarcaHub
       </p>
       <div className="mt-12 flex gap-8 text-[10px] text-gray-600 uppercase font-bold tracking-tighter">
-        <a href="#" className="hover:text-gray-400 transition-colors">Privacidade</a>
-        <a href="#" className="hover:text-gray-400 transition-colors">Termos de Uso</a>
+        <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Privacidade</a>
+        <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Termos de Uso</a>
         <a href="#" className="hover:text-gray-400 transition-colors">Ajuda</a>
       </div>
       <p className="mt-8 text-[10px] text-gray-700">© 2026 GRIDPLAY. Todos os direitos reservados.</p>
@@ -3304,7 +3336,7 @@ const Account = ({ profile }: { profile: Profile | null }) => {
 };
 
 const AdminPanel = ({ profile }: { profile: Profile | null }) => {
-  const [activeTab, setActiveTab] = useState<'cms' | 'crm'>('cms');
+  const [activeTab, setActiveTab] = useState<'cms' | 'crm' | 'stats'>('stats');
   const [videos, setVideos] = useState<Video[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3335,6 +3367,49 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     };
     fetchData();
   }, [profile]);
+
+  // Statistics calculation logic
+  const stats = useMemo(() => {
+    const totalRevenue = users.reduce((acc, u) => {
+      if (u.subscription_status !== 'ACTIVE') return acc;
+      let amount = 0;
+      if (u.plan === 'MONTHLY' || u.plan === 'MENSAL') amount = 29.90;
+      else if (u.plan === 'ANNUAL' || u.plan === 'ANUAL') amount = 139.90 / 12;
+      return acc + amount;
+    }, 0);
+
+    const totalPending = users.reduce((acc, u) => acc + (Number(u.pending_balance) || 0), 0);
+
+    return {
+      totalUsers: users.length,
+      activeSubscribers: users.filter(u => u.subscription_status === 'ACTIVE' && u.plan !== 'FREE').length,
+      estimatedMonthlyRevenue: totalRevenue,
+      totalPending: totalPending,
+      annualSubscribers: users.filter(u => (u.plan === 'ANNUAL' || u.plan === 'ANUAL') && u.subscription_status === 'ACTIVE').length,
+      monthlySubscribers: users.filter(u => (u.plan === 'MONTHLY' || u.plan === 'MENSAL') && u.subscription_status === 'ACTIVE').length,
+    };
+  }, [users]);
+
+  // Chart data simulation (in a real app, this would be grouped by month from database)
+  const chartData = [
+    { name: 'Jan', revenue: stats.estimatedMonthlyRevenue * 0.7 },
+    { name: 'Fev', revenue: stats.estimatedMonthlyRevenue * 0.8 },
+    { name: 'Mar', revenue: stats.estimatedMonthlyRevenue * 0.9 },
+    { name: 'Abr', revenue: stats.estimatedMonthlyRevenue * 1.0 },
+    { name: 'Mai', revenue: stats.estimatedMonthlyRevenue * 1.1 },
+    { name: 'Jun', revenue: stats.estimatedMonthlyRevenue },
+  ];
+
+  const admins = users.filter(u => u.role === 'admin');
+  
+  const getNextPayoutDate = () => {
+    const today = new Date();
+    let payoutDate = new Date(today.getFullYear(), today.getMonth(), 25);
+    if (today.getDate() > 25) {
+      payoutDate = new Date(today.getFullYear(), today.getMonth() + 1, 25);
+    }
+    return payoutDate.toLocaleDateString('pt-BR');
+  };
 
   const handleAddVideo = async (e: FormEvent) => {
     e.preventDefault();
@@ -3373,6 +3448,11 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     setUsers(users.map(u => u.id === userId ? { ...u, plan } : u));
   };
 
+  const handleUpdateAdminPartnership = async (userId: string, updates: Partial<Profile>) => {
+    await supabase.from('f1profiles').update(updates).eq('id', userId);
+    setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
+  };
+
   if (profile?.role !== 'admin') return <Navigate to="/" />;
 
   return (
@@ -3380,6 +3460,12 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-black italic uppercase tracking-tighter">Painel de Controle</h1>
         <div className="flex bg-dark-card rounded-lg p-1">
+          <button 
+            onClick={() => setActiveTab('stats')}
+            className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'stats' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
+          >
+            <Trophy size={16} className="inline mr-2" /> Dash
+          </button>
           <button 
             onClick={() => setActiveTab('cms')}
             className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'cms' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
@@ -3395,7 +3481,134 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
         </div>
       </div>
 
-      {activeTab === 'cms' ? (
+      {activeTab === 'stats' ? (
+        <div className="space-y-12 pb-24">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Assinantes Ativos</span>
+                <Users size={18} className="text-f1-blue" />
+              </div>
+              <div className="text-4xl font-black italic tracking-tighter text-white">{stats.activeSubscribers}</div>
+              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Total de {stats.totalUsers} cadastrados</div>
+            </div>
+            
+            <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Fluxo Mensal (MRR)</span>
+                <CreditCard size={18} className="text-citrus-yellow" />
+              </div>
+              <div className="text-4xl font-black italic tracking-tighter text-white">R$ {stats.estimatedMonthlyRevenue.toFixed(2)}</div>
+              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Baseado em assinaturas ativas</div>
+            </div>
+
+            <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Total em Aberto</span>
+                <Plus size={18} className="text-f1-blue" />
+              </div>
+              <div className="text-4xl font-black italic tracking-tighter text-white">R$ {Number(stats.totalPending).toFixed(2)}</div>
+              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Pendentes de Comissões</div>
+            </div>
+
+            <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Próximo Repasse</span>
+                <History size={18} className="text-citrus-yellow" />
+              </div>
+              <div className="text-2xl font-black italic tracking-tighter text-white uppercase">{getNextPayoutDate()}</div>
+              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Todo Dia 25</div>
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Revenue Chart */}
+            <div className="lg:col-span-2 bg-dark-card p-8 rounded-[2rem] border border-white/5">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-sm font-black uppercase tracking-widest italic">Crescimento de Faturamento</h3>
+                <div className="flex gap-2">
+                  <span className="w-3 h-3 bg-f1-blue rounded-full"></span>
+                  <span className="text-[10px] text-gray-500 font-bold uppercase">Estimado</span>
+                </div>
+              </div>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#e10600" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#e10600" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="#4b5563" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="#4b5563" 
+                      fontSize={10} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#e10600" fillOpacity={1} fill="url(#colorRevenue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Admin Profit Sharing Info */}
+            <div className="bg-dark-card p-8 rounded-[2rem] border border-white/5">
+              <h3 className="text-sm font-black uppercase tracking-widest italic mb-8">Divisão de Lucros</h3>
+              <div className="space-y-6">
+                {admins.map(admin => (
+                  <div key={admin.id} className="group border-b border-white/5 pb-6 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-bold text-sm">{admin.full_name || admin.email}</span>
+                      <span className="bg-f1-blue/20 text-f1-blue text-[10px] font-black px-2 py-0.5 rounded-full">{admin.partnership_percentage || 0}%</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                      <span>Pendente: <span className="text-white">R$ {Number(admin.pending_balance || 0).toFixed(2)}</span></span>
+                      <span>Acumulado: <span className="text-citrus-yellow">R$ {Number(admin.accumulated_balance || 0).toFixed(2)}</span></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Individual Admin View if the current user has partnership */}
+              {profile && profile.partnership_percentage && (
+                <div className="mt-12 p-6 bg-f1-blue/10 border border-f1-blue/20 rounded-2xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Trophy className="text-f1-blue" size={20} />
+                    <span className="text-xs font-black uppercase tracking-widest text-white">Sua Participação</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Comissão Aberta</div>
+                      <div className="text-2xl font-black text-white italic">R$ {Number(profile.pending_balance || 0).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[8px] text-gray-500 uppercase font-black tracking-widest mb-1">Cota Fixa</div>
+                      <div className="text-2xl font-black text-f1-blue italic">{profile.partnership_percentage}%</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-f1-blue/10">
+                    <p className="text-[8px] text-gray-400 italic">Próximo repasse agendado para {getNextPayoutDate()}.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'cms' ? (
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Add Video Form */}
           <div className="lg:col-span-1">
@@ -3528,8 +3741,9 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
               {users.map(u => (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-bold">{u.email}</div>
+                    <div className="font-bold">{u.full_name || u.email}</div>
                     <div className="text-[10px] text-gray-500 uppercase">{u.role} {u.phone && `• ${u.phone}`}</div>
+                    <div className="text-[8px] text-gray-600 truncate max-w-[150px]">{u.email}</div>
                   </td>
                   <td className="px-6 py-4">
                     <select 
@@ -3545,21 +3759,63 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
                     </select>
                   </td>
                   <td className="px-6 py-4">
-                    <select 
-                      value={u.subscription_status}
-                      onChange={(e) => handleUpdateUserStatus(u.id, e.target.value as Profile['subscription_status'])}
-                      className={cn(
-                        "text-[10px] font-black px-2 py-1 rounded-md bg-black border border-white/10 outline-none",
-                        u.subscription_status === 'ACTIVE' ? "text-green-500" : 
-                        u.subscription_status === 'TEST' ? "text-citrus-yellow" : "text-red-500"
+                    <div className="flex flex-col gap-2">
+                      <select 
+                        value={u.subscription_status}
+                        onChange={(e) => handleUpdateUserStatus(u.id, e.target.value as Profile['subscription_status'])}
+                        className={cn(
+                          "text-[10px] font-black px-2 py-1 rounded-md bg-black border outline-none",
+                          u.subscription_status === 'ACTIVE' ? "border-green-500 text-green-500" : "border-white/10 text-gray-500"
+                        )}
+                      >
+                        <option value="ACTIVE">ATIVO</option>
+                        <option value="INACTIVE">INATIVO</option>
+                        <option value="TEST">TESTE</option>
+                      </select>
+
+                      {u.role === 'admin' && (
+                        <div className="flex items-center gap-1 border-t border-white/5 pt-2">
+                          <span className="text-[8px] text-gray-500 uppercase">Ganhos:</span>
+                          <input 
+                            type="number" 
+                            step="1"
+                            value={u.partnership_percentage || 0}
+                            onChange={(e) => handleUpdateAdminPartnership(u.id, { partnership_percentage: parseInt(e.target.value) || 0 })}
+                            className="w-10 bg-transparent border-b border-white/10 text-[10px] text-white focus:outline-none"
+                          />
+                          <span className="text-[8px] text-gray-500">%</span>
+                        </div>
                       )}
-                    >
-                      <option value="ACTIVE">ATIVO</option>
-                      <option value="INACTIVE">INATIVO</option>
-                      <option value="TEST">TESTE</option>
-                    </select>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4">
+                    {u.role === 'admin' ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] text-gray-500 uppercase">Pendente (R$)</span>
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            value={u.pending_balance || 0}
+                            onChange={(e) => handleUpdateAdminPartnership(u.id, { pending_balance: parseFloat(e.target.value) || 0 })}
+                            className="bg-transparent border-b border-white/10 text-[10px] text-white focus:outline-none w-20"
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[8px] text-gray-500 uppercase">Acumulado (R$)</span>
+                          <input 
+                            type="number" 
+                            step="0.01"
+                            value={u.accumulated_balance || 0}
+                            onChange={(e) => handleUpdateAdminPartnership(u.id, { accumulated_balance: parseFloat(e.target.value) || 0 })}
+                            className="bg-transparent border-b border-white/10 text-[10px] text-white focus:outline-none w-20"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 text-[10px]">{new Date(u.created_at).toLocaleDateString('pt-BR')}</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <button className="text-red-500 hover:text-red-400 text-xs font-bold uppercase tracking-widest">Bloquear</button>
                   </td>

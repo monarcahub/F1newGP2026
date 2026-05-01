@@ -13,6 +13,9 @@ export type Profile = {
   subscription_status: 'ACTIVE' | 'INACTIVE' | 'TEST';
   plan: 'FREE' | 'MONTHLY' | 'ANNUAL' | 'MENSAL' | 'ANUAL';
   role: 'admin' | 'user';
+  partnership_percentage?: number;
+  pending_balance?: number;
+  accumulated_balance?: number;
   created_at: string;
 };
 
