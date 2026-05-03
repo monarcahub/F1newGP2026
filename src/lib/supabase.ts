@@ -16,6 +16,7 @@ export type Profile = {
   partnership_percentage?: number;
   pending_balance?: number;
   accumulated_balance?: number;
+  net_subscription_value?: number;
   created_at: string;
 };
 

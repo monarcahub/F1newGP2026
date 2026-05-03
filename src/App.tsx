@@ -2326,9 +2326,29 @@ const PlayStream = ({ profile }: { profile: Profile | null }) => {
           <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter uppercase leading-[0.8] mb-8">
             Play<span className="text-white/20">Stream</span>
           </h1>
-          <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
+
+          <div className="mb-10">
+            <a 
+              href="https://t.me/+ywjKVXYtGpMxY2Jh" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-[#0088cc] hover:bg-[#0088cc]/90 text-white px-8 py-4 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all hover:scale-105 shadow-[0_0_20px_rgba(0,136,204,0.3)] group"
+            >
+              <Send size={18} className="group-hover:translate-x-1 transition-transform" />
+              PASSO 1 - ENTRAR NO GRUPO DE VIDEOS NO TELEGRAM
+            </a>
+          </div>
+
+          <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed mb-12">
             Filmes, séries e documentários biográficos exclusivos. O melhor do cinema e televisão sobre automobilismo.
           </p>
+
+          <div className="flex items-center gap-4">
+            <span className="text-white font-black tracking-widest text-[10px] md:text-xs uppercase whitespace-nowrap bg-white/5 border border-white/10 px-4 py-2 rounded-full italic">
+              PASSO 2 - escolha o vídeo disponível com base no catálogo abaixo:
+            </span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
         </header>
 
         {loading ? (
@@ -3372,10 +3392,9 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
   const stats = useMemo(() => {
     const totalRevenue = users.reduce((acc, u) => {
       if (u.subscription_status !== 'ACTIVE') return acc;
-      let amount = 0;
-      if (u.plan === 'MONTHLY' || u.plan === 'MENSAL') amount = 29.90;
-      else if (u.plan === 'ANNUAL' || u.plan === 'ANUAL') amount = 139.90 / 12;
-      return acc + amount;
+      // Use the net value from DB (which should already account for Hotmart fees and historical prices)
+      // If not set, we don't assume a value to keep the data clean per user
+      return acc + (Number(u.net_subscription_value) || 0);
     }, 0);
 
     const totalPending = users.reduce((acc, u) => acc + (Number(u.pending_balance) || 0), 0);
@@ -3495,11 +3514,11 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             
             <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Fluxo Mensal (MRR)</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Total Líquido (MRR)</span>
                 <CreditCard size={18} className="text-citrus-yellow" />
               </div>
-              <div className="text-4xl font-black italic tracking-tighter text-white">R$ {stats.estimatedMonthlyRevenue.toFixed(2)}</div>
-              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Baseado em assinaturas ativas</div>
+              <div className="text-4xl font-black italic tracking-tighter text-white">R$ {Number(stats.estimatedMonthlyRevenue).toFixed(2)}</div>
+              <div className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Baseado no valor líquido individual</div>
             </div>
 
             <div className="bg-dark-card p-8 rounded-3xl border border-white/5 shadow-2xl">
@@ -3732,8 +3751,9 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
               <tr>
                 <th className="px-6 py-4">Usuário</th>
                 <th className="px-6 py-4">Plano</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Data Cadastro</th>
+                <th className="px-6 py-4">Valor Líquido</th>
+                <th className="px-6 py-4">Status / Parceria</th>
+                <th className="px-6 py-4">Comissões / Cadastro</th>
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
@@ -3757,6 +3777,12 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
                       <option value="ANNUAL">ANUAL (EN)</option>
                       <option value="ANUAL">ANUAL (PT)</option>
                     </select>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-white">R$ {Number(u.net_subscription_value || 0).toFixed(2)}</span>
+                      <span className="text-[8px] text-gray-500 uppercase">Líquido (Hotmart)</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-2">
