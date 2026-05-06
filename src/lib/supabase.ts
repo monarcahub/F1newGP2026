@@ -23,6 +23,7 @@ export type Profile = {
 export type Post = {
   id: string;
   title: string;
+  slug: string;
   excerpt: string;
   content: string;
   image_url: string;

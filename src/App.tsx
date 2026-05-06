@@ -56,6 +56,18 @@ declare global {
 
 // --- Components ---
 
+const generateSlug = (text: string) => {
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Remove accents
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .trim()
+    .split(/\s+/)
+    .slice(0, 7)
+    .join('-');
+};
+
 const Navbar = ({ profile }: { profile: Profile | null }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -3404,7 +3416,7 @@ const Blog = ({ profile }: { profile: Profile | null }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="group bg-dark-card rounded-3xl border border-white/5 overflow-hidden hover:border-f1-blue/30 transition-all shadow-2xl"
               >
-                <Link to={`/blog/${post.id}`}>
+                <Link to={`/blog/${post.slug}`}>
                   <div className="aspect-[16/9] overflow-hidden relative">
                     <img 
                       src={post.image_url} 
@@ -3439,7 +3451,7 @@ const Blog = ({ profile }: { profile: Profile | null }) => {
 };
 
 const BlogPost = ({ profile }: { profile: Profile | null }) => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [reactions, setReactions] = useState<PostReaction[]>([]);
@@ -3449,25 +3461,33 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
 
   useEffect(() => {
     const fetchPostData = async () => {
-      if (!id) return;
+      if (!slug) return;
       
       const [postRes, reactRes, commRes] = await Promise.all([
-        supabase.from('f1posts').select('*').eq('id', id).single(),
-        supabase.from('f1post_reactions').select('*').eq('post_id', id),
-        supabase.from('f1post_comments').select('*, f1profiles(full_name, email)').eq('post_id', id).order('created_at', { ascending: true })
+        supabase.from('f1posts').select('*').eq('slug', slug).single(),
+        // We still need the post ID for reactions and comments relationship if we didn't change schema
+        // But if postRes.data exists, we can use postRes.data.id
+        Promise.resolve({ data: null }), // Placeholder for now to get post first
+        Promise.resolve({ data: [] })
       ]);
       
-      if (postRes.data) setPost(postRes.data);
-      if (reactRes.data) setReactions(reactRes.data);
-      if (commRes.data) setComments(commRes.data as PostComment[]);
+      if (postRes.data) {
+        setPost(postRes.data);
+        const [rRes, cRes] = await Promise.all([
+          supabase.from('f1post_reactions').select('*').eq('post_id', postRes.data.id),
+          supabase.from('f1post_comments').select('*, f1profiles(full_name, email)').eq('post_id', postRes.data.id).order('created_at', { ascending: true })
+        ]);
+        if (rRes.data) setReactions(rRes.data);
+        if (cRes.data) setComments(cRes.data as PostComment[]);
+      }
       setLoading(false);
     };
 
     fetchPostData();
-  }, [id]);
+  }, [slug]);
 
   const handleLike = async () => {
-    if (!profile || !id) return;
+    if (!profile || !post) return;
 
     const existingReaction = reactions.find(r => r.user_id === profile.id);
 
@@ -3483,7 +3503,7 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
     } else {
       const { data, error } = await supabase
         .from('f1post_reactions')
-        .insert([{ post_id: id, user_id: profile.id, type: 'like' }])
+        .insert([{ post_id: post.id, user_id: profile.id, type: 'like' }])
         .select()
         .single();
       
@@ -3495,13 +3515,13 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile || !id || !newComment.trim()) return;
+    if (!profile || !post || !newComment.trim()) return;
 
     setIsSubmitting(true);
     const { data, error } = await supabase
       .from('f1post_comments')
       .insert([{
-        post_id: id,
+        post_id: post.id,
         user_id: profile.id,
         content: newComment.trim()
       }])
@@ -3668,6 +3688,7 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
 
   const [newPost, setNewPost] = useState({
     title: '',
+    slug: '',
     excerpt: '',
     content: '',
     image_url: '',
@@ -3794,6 +3815,7 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
       setPosts([data, ...posts]);
       setNewPost({
         title: '',
+        slug: '',
         excerpt: '',
         content: '',
         image_url: '',
@@ -4229,9 +4251,27 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
                     type="text" 
                     required
                     value={newPost.title}
-                    onChange={e => setNewPost({ ...newPost, title: e.target.value })}
+                    onChange={e => {
+                      const title = e.target.value;
+                      setNewPost({ 
+                        ...newPost, 
+                        title,
+                        slug: generateSlug(title)
+                      });
+                    }}
                     className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue outline-none transition-all"
                     placeholder="Título do artigo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Slug Personalizado</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newPost.slug}
+                    onChange={e => setNewPost({ ...newPost, slug: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue outline-none transition-all"
+                    placeholder="slug-do-artigo"
                   />
                 </div>
                 <div>
@@ -4521,7 +4561,7 @@ export default function App() {
             <Route path="/archives" element={<Archive profile={profile} />} />
             <Route path="/playstream" element={<PlayStream profile={profile} />} />
             <Route path="/blog" element={<Blog profile={profile} />} />
-            <Route path="/blog/:id" element={<BlogPost profile={profile} />} />
+            <Route path="/blog/:slug" element={<BlogPost profile={profile} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
