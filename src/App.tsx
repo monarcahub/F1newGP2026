@@ -51,8 +51,42 @@ declare global {
   interface Window {
     chatwootSettings: any;
     chatwootSDK: any;
+    adsbygoogle: any[];
   }
 }
+
+const AdSense = ({ adSlot }: { adSlot: string }) => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const ads = document.querySelectorAll('.adsbygoogle:not([data-adsbygoogle-status])');
+        if (ads.length > 0) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (e) {
+        console.error('AdSense error:', e);
+      }
+    }, 500); // Wait a bit for DOM to stabilize
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, adSlot]);
+
+  return (
+    <div className="my-12 overflow-hidden flex justify-center">
+      <ins
+        key={`${location.pathname}-${adSlot}`}
+        className="adsbygoogle"
+        style={{ display: 'block', width: '100%', minHeight: '90px' }}
+        data-ad-client="ca-pub-7197376783143404"
+        data-ad-slot={adSlot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+};
 
 // --- Components ---
 
@@ -3572,6 +3606,9 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
             referrerPolicy="no-referrer"
           />
         </div>
+
+        {/* Ad Block */}
+        <AdSense adSlot="6214191157" />
 
         <div className="prose prose-invert prose-lg max-w-none">
           <div className="markdown-body text-gray-300 leading-relaxed text-lg space-y-6">
