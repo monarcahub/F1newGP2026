@@ -20,6 +20,38 @@ export type Profile = {
   created_at: string;
 };
 
+export type Post = {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  image_url: string;
+  author_id: string;
+  published: boolean;
+  created_at: string;
+};
+
+export type PostReaction = {
+  id: string;
+  user_id: string;
+  post_id: string;
+  type: 'like' | 'love';
+  created_at: string;
+};
+
+export type PostComment = {
+  id: string;
+  user_id: string;
+  post_id: string;
+  content: string;
+  parent_id: string | null;
+  created_at: string;
+  f1profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+};
+
 export type Video = {
   id: string;
   title: string;

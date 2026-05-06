@@ -28,7 +28,8 @@ import {
   History,
   Download,
   Trophy,
-  Menu
+  Menu,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -42,7 +43,8 @@ import {
   AreaChart, 
   Area 
 } from 'recharts';
-import { supabase, type Profile, type Video, type Reaction, type Comment } from './lib/supabase';
+import ReactMarkdown from 'react-markdown';
+import { supabase, type Profile, type Video, type Reaction, type Comment, type Post, type PostReaction, type PostComment } from './lib/supabase';
 import { cn } from './lib/utils';
 
 declare global {
@@ -68,7 +70,8 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
     { label: 'Home', path: '/' },
     { label: 'Temporada 2026', path: '/season/2026' },
     { label: 'PlayStream', path: '/playstream' },
-    { label: 'Arquivos', path: '/archives' },
+    { label: 'Vídeos', path: '/archives' },
+    { label: 'Blog', path: '/blog' },
   ];
 
   return (
@@ -3355,10 +3358,300 @@ const Account = ({ profile }: { profile: Profile | null }) => {
   );
 };
 
+const Blog = ({ profile }: { profile: Profile | null }) => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      const { data } = await supabase
+        .from('f1posts')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false });
+      
+      if (data) setPosts(data);
+      setLoading(false);
+    };
+
+    fetchPosts();
+  }, []);
+
+  return (
+    <div className="pt-32 pb-24 px-4 md:px-12">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-20">
+          <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter uppercase leading-[0.8] mb-8">
+            Blog<span className="text-white/20">F1</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
+            Notícias, bastidores e análises detalhadas do mundo da Formula 1 e automobilismo.
+          </p>
+        </header>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-dark-card rounded-3xl aspect-[16/10] border border-white/5" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {posts.map(post => (
+              <motion.div 
+                key={post.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group bg-dark-card rounded-3xl border border-white/5 overflow-hidden hover:border-f1-blue/30 transition-all shadow-2xl"
+              >
+                <Link to={`/blog/${post.id}`}>
+                  <div className="aspect-[16/9] overflow-hidden relative">
+                    <img 
+                      src={post.image_url} 
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
+                  </div>
+                  <div className="p-8">
+                    <div className="text-[10px] text-f1-blue font-black uppercase tracking-[0.2em] mb-4">
+                      {new Date(post.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                    <h2 className="text-2xl font-black italic tracking-tighter text-white uppercase group-hover:text-f1-blue transition-colors mb-4 line-clamp-2">
+                      {post.title}
+                    </h2>
+                    <p className="text-gray-400 text-sm leading-relaxed line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                    <div className="mt-8 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white group-hover:gap-4 transition-all">
+                      Ler Artigo <ChevronRight size={14} />
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const BlogPost = ({ profile }: { profile: Profile | null }) => {
+  const { id } = useParams();
+  const [post, setPost] = useState<Post | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reactions, setReactions] = useState<PostReaction[]>([]);
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchPostData = async () => {
+      if (!id) return;
+      
+      const [postRes, reactRes, commRes] = await Promise.all([
+        supabase.from('f1posts').select('*').eq('id', id).single(),
+        supabase.from('f1post_reactions').select('*').eq('post_id', id),
+        supabase.from('f1post_comments').select('*, f1profiles(full_name, email)').eq('post_id', id).order('created_at', { ascending: true })
+      ]);
+      
+      if (postRes.data) setPost(postRes.data);
+      if (reactRes.data) setReactions(reactRes.data);
+      if (commRes.data) setComments(commRes.data as PostComment[]);
+      setLoading(false);
+    };
+
+    fetchPostData();
+  }, [id]);
+
+  const handleLike = async () => {
+    if (!profile || !id) return;
+
+    const existingReaction = reactions.find(r => r.user_id === profile.id);
+
+    if (existingReaction) {
+      const { error } = await supabase
+        .from('f1post_reactions')
+        .delete()
+        .eq('id', existingReaction.id);
+      
+      if (!error) {
+        setReactions(reactions.filter(r => r.id !== existingReaction.id));
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('f1post_reactions')
+        .insert([{ post_id: id, user_id: profile.id, type: 'like' }])
+        .select()
+        .single();
+      
+      if (data && !error) {
+        setReactions([...reactions, data]);
+      }
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile || !id || !newComment.trim()) return;
+
+    setIsSubmitting(true);
+    const { data, error } = await supabase
+      .from('f1post_comments')
+      .insert([{
+        post_id: id,
+        user_id: profile.id,
+        content: newComment.trim()
+      }])
+      .select('*, f1profiles(full_name, email)')
+      .single();
+
+    if (data && !error) {
+      setComments([...comments, data as PostComment]);
+      setNewComment('');
+    }
+    setIsSubmitting(false);
+  };
+
+  const userLiked = profile ? reactions.some(r => r.user_id === profile.id) : false;
+
+  if (loading) return (
+    <div className="min-h-screen pt-32 flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-f1-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (!post) return <Navigate to="/blog" />;
+
+  return (
+    <div className="pt-32 pb-24">
+      <div className="max-w-4xl mx-auto px-4">
+        <Link 
+          to="/blog"
+          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white mb-12 transition-colors"
+        >
+          <ChevronLeft size={16} /> Voltar para o Blog
+        </Link>
+
+        <div className="mb-12">
+          <div className="text-[10px] text-f1-blue font-black uppercase tracking-[0.2em] mb-4">
+            {new Date(post.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter text-white uppercase leading-[0.9]">
+            {post.title}
+          </h1>
+        </div>
+
+        <div className="aspect-[21/9] rounded-[2rem] overflow-hidden border border-white/5 mb-16 shadow-2xl">
+          <img 
+            src={post.image_url} 
+            alt={post.title}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+
+        <div className="prose prose-invert prose-lg max-w-none">
+          <div className="markdown-body text-gray-300 leading-relaxed text-lg space-y-6">
+            <ReactMarkdown>{post.content}</ReactMarkdown>
+          </div>
+        </div>
+
+        {/* Interaction Bar */}
+        <div className="mt-16 pt-8 border-t border-white/5 flex items-center gap-8">
+          <button 
+            onClick={handleLike}
+            className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest",
+              userLiked 
+                ? "bg-f1-blue text-white shadow-[0_0_20px_rgba(255,24,1,0.3)]" 
+                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+            )}
+          >
+            <ThumbsUp size={16} />
+            {reactions.length} Curtidas
+          </button>
+          
+          <div className="flex items-center gap-2 text-gray-500 font-black text-[10px] uppercase tracking-widest">
+            <MessageSquare size={16} />
+            {comments.length} Comentários
+          </div>
+        </div>
+
+        {/* Comments Section */}
+        <div className="mt-16 space-y-12">
+          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-white">Comentários</h3>
+          
+          {profile ? (
+            <form onSubmit={handleAddComment} className="relative group">
+              <textarea 
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="O que você achou deste artigo?"
+                className="w-full bg-dark-card border border-white/5 rounded-2xl p-6 text-white placeholder-gray-600 focus:outline-none focus:border-f1-blue/50 transition-all min-h-[120px] resize-none"
+              />
+              <div className="absolute bottom-4 right-4">
+                <button 
+                  disabled={isSubmitting || !newComment.trim()}
+                  className="bg-f1-blue hover:bg-red-700 disabled:opacity-50 disabled:hover:bg-f1-blue text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? 'Enviando...' : (
+                    <>Enviar <Send size={14} /></>
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="bg-dark-card border border-white/5 rounded-2xl p-8 text-center">
+              <p className="text-gray-400 font-medium mb-4">Você precisa estar logado para comentar.</p>
+              <Link 
+                to="/admin" 
+                className="inline-block bg-f1-blue text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all"
+              >
+                Fazer Login
+              </Link>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {comments.length === 0 ? (
+              <p className="text-gray-500 italic text-center py-8">Nenhum comentário ainda. Seja o primeiro!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="bg-dark-card border border-white/5 rounded-2xl p-6 flex gap-4">
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+                    <User size={20} className="text-gray-500" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-black text-[10px] uppercase tracking-widest">
+                        {comment.f1profiles?.full_name || 'Usuário'}
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed">
+                      {comment.content}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AdminPanel = ({ profile }: { profile: Profile | null }) => {
-  const [activeTab, setActiveTab] = useState<'cms' | 'crm' | 'stats'>('stats');
+  const [activeTab, setActiveTab] = useState<'cms' | 'crm' | 'stats' | 'blog'>('stats');
   const [videos, setVideos] = useState<Video[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form State
@@ -3373,16 +3666,26 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     thumbnail_url: ''
   });
 
+  const [newPost, setNewPost] = useState({
+    title: '',
+    excerpt: '',
+    content: '',
+    image_url: '',
+    published: false
+  });
+
   useEffect(() => {
     if (profile?.role !== 'admin') return;
     
     const fetchData = async () => {
-      const [vRes, uRes] = await Promise.all([
+      const [vRes, uRes, pRes] = await Promise.all([
         supabase.from('videos').select('*').order('created_at', { ascending: false }),
-        supabase.from('f1profiles').select('*').order('created_at', { ascending: false })
+        supabase.from('f1profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('f1posts').select('*').order('created_at', { ascending: false })
       ]);
       if (vRes.data) setVideos(vRes.data);
       if (uRes.data) setUsers(uRes.data);
+      if (pRes.data) setPosts(pRes.data);
       setLoading(false);
     };
     fetchData();
@@ -3472,6 +3775,62 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     setUsers(users.map(u => u.id === userId ? { ...u, ...updates } : u));
   };
 
+  const handleAddPost = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+
+    const { data, error } = await supabase
+      .from('f1posts')
+      .insert([{
+        ...newPost,
+        author_id: profile.id
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      alert('Erro ao criar post: ' + error.message);
+    } else if (data) {
+      setPosts([data, ...posts]);
+      setNewPost({
+        title: '',
+        excerpt: '',
+        content: '',
+        image_url: '',
+        published: false
+      });
+      alert('Post criado com sucesso!');
+    }
+  };
+
+  const handleTogglePostPublish = async (postId: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('f1posts')
+      .update({ published: !currentStatus })
+      .eq('id', postId);
+
+    if (error) {
+      alert('Erro ao atualizar status: ' + error.message);
+    } else {
+      setPosts(posts.map(p => p.id === postId ? { ...p, published: !currentStatus } : p));
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta postagem?')) return;
+    
+    const { error } = await supabase
+      .from('f1posts')
+      .delete()
+      .eq('id', postId);
+
+    if (error) {
+      alert('Erro ao excluir: ' + error.message);
+    } else {
+      setPosts(posts.filter(p => p.id !== postId));
+    }
+  };
+
   if (profile?.role !== 'admin') return <Navigate to="/" />;
 
   return (
@@ -3496,6 +3855,12 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'crm' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
           >
             <Users size={16} className="inline mr-2" /> CRM
+          </button>
+          <button 
+            onClick={() => setActiveTab('blog')}
+            className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'blog' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
+          >
+            <FileText size={16} className="inline mr-2" /> Blog
           </button>
         </div>
       </div>
@@ -3744,8 +4109,8 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-dark-card rounded-xl border border-white/5 overflow-hidden">
+      ) : activeTab === 'crm' ? (
+        <div className="bg-dark-card rounded-xl border border-white/5 overflow-hidden shadow-2xl">
           <table className="w-full text-left text-sm">
             <thead className="bg-white/5 text-gray-400 uppercase text-[10px] font-black tracking-widest">
               <tr>
@@ -3849,6 +4214,111 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-3 gap-8 pb-24">
+          <div className="lg:col-span-1">
+            <div className="bg-dark-card p-8 rounded-3xl border border-white/5 sticky top-32">
+              <h2 className="text-xl font-black italic uppercase tracking-tighter mb-8 bg-f1-blue text-white px-4 py-2 inline-block skew-x-[-12deg]">
+                Nova Postagem
+              </h2>
+              <form onSubmit={handleAddPost} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Título</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newPost.title}
+                    onChange={e => setNewPost({ ...newPost, title: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue outline-none transition-all"
+                    placeholder="Título do artigo"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Resumo (Excerpt)</label>
+                  <textarea 
+                    required
+                    value={newPost.excerpt}
+                    onChange={e => setNewPost({ ...newPost, excerpt: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue outline-none transition-all h-24"
+                    placeholder="Um breve resumo para a listagem"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">URL da Imagem</label>
+                  <input 
+                    type="url" 
+                    required
+                    value={newPost.image_url}
+                    onChange={e => setNewPost({ ...newPost, image_url: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue outline-none transition-all"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Conteúdo (Markdown)</label>
+                  <textarea 
+                    required
+                    value={newPost.content}
+                    onChange={e => setNewPost({ ...newPost, content: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm font-mono focus:border-f1-blue outline-none transition-all h-64"
+                    placeholder="# Meu Título\n\nConteúdo em markdown..."
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="published"
+                    checked={newPost.published}
+                    onChange={e => setNewPost({ ...newPost, published: e.target.checked })}
+                    className="w-5 h-5 bg-black border border-white/10 rounded accent-f1-blue"
+                  />
+                  <label htmlFor="published" className="text-sm font-bold text-gray-300">Publicar imediatamente</label>
+                </div>
+                <button 
+                  type="submit" 
+                  className="w-full bg-f1-blue hover:bg-red-700 text-white font-black italic uppercase tracking-tighter py-4 rounded-xl transition-all shadow-lg"
+                >
+                  Criar Postagem
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-6">
+            {posts.map(post => (
+              <div key={post.id} className="bg-dark-card p-6 rounded-2xl border border-white/5 flex gap-6">
+                <img 
+                  src={post.image_url} 
+                  alt={post.title}
+                  className="w-32 h-20 object-cover rounded-xl"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-black uppercase italic tracking-tighter">{post.title}</h3>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        onClick={() => handleTogglePostPublish(post.id, post.published)}
+                        className={cn("text-[10px] font-black uppercase tracking-widest transition-colors", post.published ? "text-green-500 hover:text-green-400" : "text-gray-500 hover:text-gray-400")}
+                        title={post.published ? "Desativar" : "Publicar"}
+                      >
+                        {post.published ? <Eye size={16} /> : <EyeOff size={16} />}
+                      </button>
+                      <button 
+                        onClick={() => handleDeletePost(post.id)}
+                        className="text-red-500 hover:text-red-400 transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-500 line-clamp-2 italic">{post.excerpt}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -4050,6 +4520,8 @@ export default function App() {
             <Route path="/admin" element={<AdminPanel profile={profile} />} />
             <Route path="/archives" element={<Archive profile={profile} />} />
             <Route path="/playstream" element={<PlayStream profile={profile} />} />
+            <Route path="/blog" element={<Blog profile={profile} />} />
+            <Route path="/blog/:id" element={<BlogPost profile={profile} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
