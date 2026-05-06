@@ -795,12 +795,26 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
   );
 };
 
-const HighlightsSlider = () => {
-  const highlights = [
+const HighlightsSlider = ({ profile }: { profile: Profile | null }) => {
+  const visitorHighlights = [
+    { title: "F1 O Filme", subtitle: "As maiores produções do automobilismo", image: "https://i.ibb.co/nq4yMJvy/f1-filme.jpg" },
+    { title: "Temporada 2021", subtitle: "O épico duelo pela coroa mundial", image: "https://i.ibb.co/1twFwN80/f1-2021.jpg" },
+    { title: "Drive to Survive", subtitle: "Bastidores e dramas das pistas", image: "https://i.ibb.co/qYx9MvHv/dtv-8.jpg" },
+    { title: "Formula 2", subtitle: "Onde o futuro da F1 começa", image: "https://i.ibb.co/35PQt9qN/f2-2026.jpg" },
+    { title: "Onboard Camera", subtitle: "A visão mais extrema da velocidade", image: "https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" },
+    { title: "Temporada 2012", subtitle: "Uma das maiores temporadas da história", image: "https://i.ibb.co/pBr66ZbP/f1-2012.jpg" },
+    { title: "F1 Academy", subtitle: "O futuro feminino nas pistas", image: "https://i.ibb.co/6RBN8gcW/f1academy-2026.jpg" },
+    { title: "Formula 3", subtitle: "A base do automobilismo mundial", image: "https://i.ibb.co/BdqfmpS/f3-2026.jpg" },
+    { title: "Temporada 1950", subtitle: "Onde tudo começou", image: "https://i.ibb.co/DDS3cyTx/f1-1950.jpg" }
+  ];
+
+  const loggedHighlights = [
     { title: "Filmes", subtitle: "As maiores produções do automobilismo", image: "https://i.ibb.co/nq4yMJvy/f1-filme.jpg" },
     { title: "Séries", subtitle: "Bastidores e dramas das pistas", image: "https://i.ibb.co/qYx9MvHv/dtv-8.jpg" },
     { title: "Documentários", subtitle: "A história real de lendas e equipes", image: "https://i.ibb.co/BdqfmpS/f3-2026.jpg" }
   ];
+
+  const highlights = profile ? loggedHighlights : visitorHighlights;
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -960,7 +974,7 @@ const FAQ = () => {
   );
 };
 
-const LandingPage = () => {
+const LandingPage = ({ profile }: { profile: Profile | null }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
   const getPromoDate = () => {
@@ -1288,7 +1302,7 @@ const LandingPage = () => {
         </div>
       </div>
 
-      <HighlightsSlider />
+      <HighlightsSlider profile={profile} />
       <FAQ />
       
       {/* Mini Legal Footer */}
@@ -1355,7 +1369,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   );
 
   // Re-enable landing page as home for visitors as requested
-  if (!profile) return <LandingPage />;
+  if (!profile) return <LandingPage profile={profile} />;
 
   const featured = videos[videos.length - 1];
   const categories = Array.from(new Set(videos.map(v => v.category))) as string[];
@@ -1627,7 +1641,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
         {/* Highlights Section */}
         <div className="-mx-4 md:-mx-12">
-          <HighlightsSlider />
+          <HighlightsSlider profile={profile} />
         </div>
 
         {/* Telegram VIP Section - Polished */}
@@ -1884,16 +1898,38 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
         <div className="w-24 h-24 bg-f1-blue/10 rounded-full flex items-center justify-center mb-8 border border-f1-blue/20">
           <Lock className="text-f1-blue" size={40} />
         </div>
-        <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Temporada Bloqueada</h2>
-        <p className="text-gray-400 max-w-md mb-8 font-medium italic">
-          Você não tem acesso a esta temporada. Adquira o acesso individual ou torne-se Premium para liberar todo o acervo.
+        <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-4">
+          {!profile ? "CONTEÚDO EXCLUSIVO" : "Temporada Bloqueada"}
+        </h2>
+        <p className="text-gray-400 max-w-md mb-8 font-medium italic underline underline-offset-8 decoration-f1-blue/30">
+          {!profile 
+            ? "FAÇA LOGIN E CRIE CONTA GRÁTIS PARA VER - Se preferir sem anúncios e alta qualidade, torne-se Premium para liberar todo o acervo da temporada!"
+            : "Você não tem acesso a esta temporada. Adquira o acesso individual ou torne-se Premium para liberar todo o acervo."
+          }
         </p>
-        <button 
-          onClick={() => navigate('/archives')}
-          className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
-        >
-          Ir para Arquivos
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          {!profile ? (
+            <Link 
+              to="/login"
+              className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+            >
+              Fazer Login / Criar Conta
+            </Link>
+          ) : (
+            <button 
+              onClick={() => navigate('/archives')}
+              className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
+            >
+              Ir para Arquivos
+            </button>
+          )}
+          <button 
+            onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-white/10 text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
+          >
+            Ver Planos Premium
+          </button>
+        </div>
       </div>
     );
   }
