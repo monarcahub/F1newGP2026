@@ -1603,38 +1603,10 @@ const Home = ({ profile }: { profile: Profile | null }) => {
               </button>
             </div>
             
-            <div className="flex gap-6 overflow-x-auto pb-6 custom-scrollbar snap-x -mx-4 md:mx-0 px-4 md:px-0">
-              {videos.filter(v => v.category === cat).map((video) => (
-                <div 
-                  key={video.id}
-                  onClick={() => handleWatchClick(video.id)}
-                  className="relative flex-shrink-0 w-72 md:w-[400px] aspect-video bg-dark-card rounded-2xl overflow-hidden group transition-all duration-500 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/30 cursor-pointer shadow-2xl"
-                >
-                  <img 
-                    src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/800/450`} 
-                    alt={video.title}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/800/450`;
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent flex flex-col justify-end p-6 translate-y-2 group-hover:translate-y-0 transition-transform">
-                    <h3 className="text-sm md:text-lg font-black italic uppercase tracking-tight group-hover:text-f1-blue transition-colors mb-2">{video.title}</h3>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{video.year}</p>
-                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all shadow-lg">
-                        <Play size={16} fill="currentColor" />
-                      </div>
-                    </div>
-                  </div>
-                  {video.status === 'PREMIUM' && (
-                    <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-xl">PREMIUM</div>
-                  )}
-                  <div className="absolute inset-0 border-[3px] border-transparent group-hover:border-f1-blue/20 rounded-2xl transition-colors pointer-events-none" />
-                </div>
-              ))}
-            </div>
+            <CategoryCarousel 
+              videos={videos.filter(v => v.category === cat)}
+              onVideoClick={handleWatchClick}
+            />
             {idx === 0 && <AdBanner profile={profile} />}
           </div>
         ))}
@@ -1795,6 +1767,158 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+const HorizontalRaceSlider = ({ videos, currentVideoId, onVideoClick }: { videos: Video[], currentVideoId?: string, onVideoClick: (id: string) => void }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = window.innerWidth < 768 ? 300 : 500;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  return (
+    <div className="relative group">
+      {/* Scroll Buttons */}
+      <div className="absolute top-1/2 -translate-y-1/2 -left-4 md:-left-6 z-20 opacity-0 group-hover:opacity-100 transition-all pointer-events-none">
+        <button 
+          onClick={() => scroll('left')}
+          className="bg-black/80 hover:bg-f1-blue text-white p-3 rounded-full border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-95 pointer-events-auto"
+        >
+          <ChevronLeft size={20} />
+        </button>
+      </div>
+
+      <div className="absolute top-1/2 -translate-y-1/2 -right-4 md:-right-6 z-20 opacity-0 group-hover:opacity-100 transition-all pointer-events-none">
+        <button 
+          onClick={() => scroll('right')}
+          className="bg-black/80 hover:bg-f1-blue text-white p-3 rounded-full border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-95 pointer-events-auto"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+      
+      <div 
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar snap-x scroll-smooth"
+      >
+        {videos.map((video) => (
+          <div 
+            key={video.id}
+            onClick={() => onVideoClick(video.id)}
+            className={cn(
+              "relative flex-shrink-0 w-64 md:w-80 aspect-video bg-dark-card rounded-xl overflow-hidden group/card transition-all duration-300 snap-start border cursor-pointer",
+              currentVideoId === video.id ? "border-f1-blue scale-100 ring-2 ring-f1-blue/50" : "border-white/5 hover:border-f1-blue/50 hover:scale-[1.02]"
+            )}
+          >
+            <img 
+              src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/600/338`} 
+              alt={video.title}
+              className="w-full h-full object-cover opacity-70 group-hover/card:opacity-100 transition-opacity"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/600/338`;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-4">
+              <h3 className="text-sm md:text-base font-bold leading-tight group-hover/card:text-f1-blue transition-colors line-clamp-2">{video.title}</h3>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{video.year}</p>
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover/card:bg-f1-blue group-hover/card:text-white transition-all">
+                  <Play size={14} fill="currentColor" />
+                </div>
+              </div>
+            </div>
+            {video.status === 'PREMIUM' && (
+              <div className="absolute top-3 right-3 bg-citrus-yellow text-black text-[8px] font-black px-2 py-1 rounded-sm uppercase tracking-widest shadow-lg">PREMIUM</div>
+            )}
+            {currentVideoId === video.id && (
+              <div className="absolute inset-0 bg-f1-blue/10 pointer-events-none" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CategoryCarousel = ({ videos, onVideoClick }: { videos: Video[], onVideoClick: (id: string) => void }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = window.innerWidth < 768 ? 300 : 700;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  return (
+    <div className="relative group/carousel">
+      {/* Scroll Buttons */}
+      <div className="absolute top-1/2 -translate-y-1/2 -left-4 md:-left-10 z-20 opacity-0 group-hover/carousel:opacity-100 transition-all pointer-events-none">
+        <button 
+          onClick={() => scroll('left')}
+          className="bg-black/90 hover:bg-f1-blue text-white p-5 rounded-full border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-95 pointer-events-auto"
+        >
+          <ChevronLeft size={28} />
+        </button>
+      </div>
+
+      <div className="absolute top-1/2 -translate-y-1/2 -right-4 md:-right-10 z-20 opacity-0 group-hover/carousel:opacity-100 transition-all pointer-events-none">
+        <button 
+          onClick={() => scroll('right')}
+          className="bg-black/90 hover:bg-f1-blue text-white p-5 rounded-full border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-95 pointer-events-auto"
+        >
+          <ChevronRight size={28} />
+        </button>
+      </div>
+
+      <div 
+        ref={scrollRef}
+        className="flex gap-6 overflow-x-auto pb-6 custom-scrollbar snap-x -mx-4 md:mx-0 px-4 md:px-0 scroll-smooth"
+      >
+        {videos.map((video) => (
+          <div 
+            key={video.id}
+            onClick={() => onVideoClick(video.id)}
+            className="relative flex-shrink-0 w-72 md:w-[450px] aspect-video bg-dark-card rounded-2xl overflow-hidden group/card transition-all duration-500 hover:scale-[1.03] snap-start border border-white/5 hover:border-f1-blue/30 cursor-pointer shadow-2xl"
+          >
+            <img 
+              src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/800/450`} 
+              alt={video.title}
+              className="w-full h-full object-cover opacity-60 group-hover/card:opacity-100 transition-all duration-500 group-hover/card:scale-110"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/800/450`;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent flex flex-col justify-end p-8 translate-y-2 group-hover/card:translate-y-0 transition-transform">
+              <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase mb-2">EPISÓDIO</span>
+              <h3 className="text-sm md:text-xl font-black italic uppercase tracking-tight group-hover/card:text-f1-blue transition-colors mb-3 leading-tight line-clamp-2">{video.title}</h3>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{video.year} • {video.category}</p>
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover/card:bg-f1-blue group-hover/card:text-white transition-all shadow-lg">
+                  <Play size={20} fill="currentColor" />
+                </div>
+              </div>
+            </div>
+            {video.status === 'PREMIUM' && (
+              <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-xl">PREMIUM</div>
+            )}
+            <div className="absolute inset-0 border-[3px] border-transparent group-hover/card:border-f1-blue/20 rounded-2xl transition-colors pointer-events-none" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -2047,37 +2171,10 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
           Corridas Disponíveis
         </h2>
         
-        <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar snap-x">
-          {episodes.map((video) => (
-            <div 
-              key={video.id}
-              onClick={() => handleWatchClick(video.id)}
-              className="relative flex-shrink-0 w-64 md:w-80 aspect-video bg-dark-card rounded-xl overflow-hidden group transition-all duration-300 hover:scale-105 snap-start border border-white/5 hover:border-f1-blue/50 cursor-pointer"
-            >
-              <img 
-                src={video.thumbnail_url || `https://picsum.photos/seed/${video.id}/600/338`} 
-                alt={video.title}
-                className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${video.id}/600/338`;
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-4">
-                <h3 className="text-sm md:text-base font-bold leading-tight group-hover:text-f1-blue transition-colors">{video.title}</h3>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{video.year}</p>
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md group-hover:bg-f1-blue group-hover:text-white transition-all">
-                    <Play size={14} fill="currentColor" />
-                  </div>
-                </div>
-              </div>
-              {video.status === 'PREMIUM' && (
-                <div className="absolute top-3 right-3 bg-citrus-yellow text-black text-[8px] font-black px-2 py-1 rounded-sm uppercase tracking-widest shadow-lg">PREMIUM</div>
-              )}
-            </div>
-          ))}
-        </div>
+        <HorizontalRaceSlider 
+          videos={episodes} 
+          onVideoClick={handleWatchClick} 
+        />
       </div>
 
       {featuredVideo && profile && (
@@ -2494,6 +2591,7 @@ const PlayStream = ({ profile }: { profile: Profile | null }) => {
 const Watch = ({ profile }: { profile: Profile | null }) => {
   const { id } = useParams();
   const [video, setVideo] = useState<Video | null>(null);
+  const [seasonVideos, setSeasonVideos] = useState<Video[]>([]);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [userPurchases, setUserPurchases] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2539,6 +2637,16 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
       if (data) {
         setVideo(data);
+        
+        // Fetch other videos from the same season
+        const { data: sVideos } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('year', data.year)
+          .order('created_at', { ascending: true });
+        
+        if (sVideos) setSeasonVideos(sVideos);
+
         // Mostrar alerta do Telegram para usuários premium ativos
         if (profile?.subscription_status === 'ACTIVE' && profile?.plan !== 'FREE') {
           const hasSeenAlert = sessionStorage.getItem(`telegram-alert-${id}`);
@@ -2776,6 +2884,18 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
         </div>
 
         <AdBanner profile={profile} />
+
+        <div className="mt-16">
+          <h2 className="text-2xl md:text-3xl font-black mb-8 italic tracking-tighter uppercase flex items-center gap-3">
+            <span className="w-2 h-8 bg-f1-blue" />
+            Corridas da Temporada {video.year}
+          </h2>
+          <HorizontalRaceSlider 
+            videos={seasonVideos}
+            currentVideoId={video.id}
+            onVideoClick={(vidId) => navigate(`/watch/${vidId}`)}
+          />
+        </div>
 
         {profile && (
           <div className="mt-12">
