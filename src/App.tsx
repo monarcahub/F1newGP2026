@@ -44,6 +44,9 @@ import {
   Area 
 } from 'recharts';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import rehypeRaw from 'rehype-raw';
 import { supabase, type Profile, type Video, type Reaction, type Comment, type Post, type PostReaction, type PostComment } from './lib/supabase';
 import { cn } from './lib/utils';
 
@@ -3766,10 +3769,13 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
         {/* Ad Block */}
         <AdSense adSlot="6214191157" />
 
-        <div className="prose prose-invert prose-lg max-w-none">
-          <div className="markdown-body text-gray-300 leading-relaxed text-lg space-y-6">
-            <ReactMarkdown>{post.content}</ReactMarkdown>
-          </div>
+        <div className="prose prose-invert prose-blue max-w-none prose-p:text-gray-300 prose-headings:text-white prose-headings:font-black prose-headings:italic prose-headings:tracking-tighter prose-headings:uppercase prose-a:text-f1-blue prose-strong:text-white prose-img:rounded-3xl prose-img:border prose-img:border-white/5">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            rehypePlugins={[rehypeRaw]}
+          >
+            {post.content}
+          </ReactMarkdown>
         </div>
 
         {/* Interaction Bar */}
