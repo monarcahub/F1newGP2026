@@ -29,7 +29,11 @@ import {
   Download,
   Trophy,
   Menu,
-  FileText
+  FileText,
+  Radio,
+  CloudRain,
+  Thermometer,
+  Wind
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -49,6 +53,7 @@ import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import { supabase, type Profile, type Video, type Reaction, type Comment, type Post, type PostReaction, type PostComment } from './lib/supabase';
 import { cn } from './lib/utils';
+import { openF1Service, type Session, type Weather, type RaceControl } from './services/openF1Service';
 
 declare global {
   interface Window {
@@ -91,6 +96,347 @@ const AdSense = ({ adSlot }: { adSlot: string }) => {
   );
 };
 
+const LiveRaceBanner = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [raceControl, setRaceControl] = useState<RaceControl[]>([]);
+  const [isLive, setIsLive] = useState(false);
+  const [showFull, setShowFull] = useState(false);
+
+  useEffect(() => {
+    const checkLive = async () => {
+      const latest = await openF1Service.getLatestSession();
+      if (latest) {
+        const now = new Date();
+        const start = new Date(latest.date_start);
+        const end = latest.date_end ? new Date(latest.date_end) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+        
+        // Is live if now is between start and end (with 15 min buffer after end)
+        const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
+        setIsLive(live);
+        setSession(latest);
+
+        if (live) {
+          const [w, rc] = await Promise.all([
+            openF1Service.getWeather(latest.session_key),
+            openF1Service.getRaceControl(latest.session_key)
+          ]);
+          setWeather(w);
+          setRaceControl(rc.slice(-3).reverse()); // Latest 3 messages
+        }
+      }
+    };
+
+    checkLive();
+    const interval = setInterval(checkLive, 60000); // Poll every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!isLive || !session) return null;
+
+  return (
+    <motion.div 
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      className="bg-f1-blue text-white relative z-[60] overflow-hidden"
+    >
+      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-widest italic">Acontecendo Agora</span>
+          </div>
+          <div className="h-4 w-px bg-white/20 hidden sm:block" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+            <span className="text-xs font-black uppercase tracking-tight italic">
+              {session.country_name} - {session.session_name}
+            </span>
+            <span className="text-[10px] opacity-70 font-bold uppercase tracking-widest hidden md:inline">
+              Circuit: {session.circuit_short_name}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {weather && (
+            <div className="hidden lg:flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-1.5">
+                <Thermometer size={14} />
+                <span>{weather.track_temperature}°C Track</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-white/70">
+                <Wind size={14} />
+                <span>{weather.wind_speed}km/h</span>
+              </div>
+              {weather.rainfall > 0 && (
+                <div className="flex items-center gap-1.5 text-blue-200">
+                  <CloudRain size={14} />
+                  <span>Chuva: {weather.rainfall}%</span>
+                </div>
+              )}
+            </div>
+          )}
+          <button 
+            onClick={() => setShowFull(!showFull)}
+            className="p-1 hover:bg-white/10 rounded-md transition-colors"
+          >
+            <ChevronDown size={18} className={cn("transition-transform duration-300", showFull && "rotate-180")} />
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showFull && (
+          <motion.div
+            initial={{ height: 0 }}
+            animate={{ height: 'auto' }}
+            exit={{ height: 0 }}
+            className="bg-black/20 border-t border-white/10"
+          >
+            <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Race Control Feed */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Radio size={16} className="text-white/50" />
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white/50">Race Control</h4>
+                </div>
+                {raceControl.length > 0 ? (
+                  raceControl.map((msg, i) => (
+                    <div key={i} className="flex gap-3 text-xs">
+                      <span className="text-white/30 font-mono">{new Date(msg.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <p className="font-bold leading-tight uppercase italic tracking-tighter">{msg.message}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-white/30 italic">Aguardando atualizações...</p>
+                )}
+              </div>
+
+              {/* Weather & Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                  <span className="block text-[8px] font-black uppercase tracking-widest text-white/40 mb-2">Ar / Pista</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-black italic">{weather?.air_temperature || '--'}°</span>
+                    <span className="text-lg font-black italic text-f1-blue">{weather?.track_temperature || '--'}°</span>
+                  </div>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                  <span className="block text-[8px] font-black uppercase tracking-widest text-white/40 mb-2">Umidade</span>
+                  <div className="text-lg font-black italic">{weather?.humidity || '--'}%</div>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 pb-2 text-center">
+              <Link to="/archives" className="text-[8px] font-black uppercase tracking-widest hover:text-white transition-colors underline underline-offset-4">Ver Acervo Completo</Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+const FeaturedDetailsModal = ({ isOpen, onClose, video }: { isOpen: boolean, onClose: () => void, video: Video }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [raceControl, setRaceControl] = useState<RaceControl[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen && video) {
+      const fetchDetails = async () => {
+        setLoading(true);
+        // Step 1: Find session for this video year and title keywords
+        const yearSessions = await openF1Service.getSessionsByYear(video.year);
+        
+        // Simple keyword matching (e.g., GP name)
+        const keywords = video.title.toLowerCase().split(' ').filter(k => k.length > 3 && k !== '2026' && k !== 'formula');
+        
+        const matchedSessions = yearSessions.filter(s => 
+          keywords.some(k => 
+            s.location.toLowerCase().includes(k) || 
+            s.country_name.toLowerCase().includes(k) ||
+            s.session_name.toLowerCase().includes(k)
+          )
+        );
+
+        // Prefer "Race" session if multiple sessions found
+        const bestSession = matchedSessions.find(s => s.session_name.toLowerCase().includes('race')) || matchedSessions[0];
+
+        if (bestSession) {
+          setSession(bestSession);
+          const [w, rc] = await Promise.all([
+            openF1Service.getWeather(bestSession.session_key),
+            openF1Service.getRaceControlBySession(bestSession.session_key)
+          ]);
+          setWeather(w);
+          setRaceControl(rc.slice(0, 10)); // Top 10 events
+        }
+        setLoading(false);
+      };
+      fetchDetails();
+    }
+  }, [isOpen, video]);
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/90 backdrop-blur-md"
+        />
+        
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="relative w-full max-w-4xl bg-dark-card border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        >
+          {/* Header */}
+          <div className="p-8 border-b border-white/10 flex items-center justify-between bg-white/5">
+            <div>
+              <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase block mb-1">Detalhes do Evento</span>
+              <h2 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter text-white leading-none">
+                {video.title}
+              </h2>
+            </div>
+            <button 
+              onClick={onClose}
+              className="p-3 hover:bg-white/10 rounded-full transition-colors text-white/50 hover:text-white"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="w-8 h-8 border-3 border-f1-blue border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : session ? (
+              <div className="space-y-12">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                    <div className="flex items-center gap-2 text-gray-500 mb-3">
+                      <Radio size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Sessão</span>
+                    </div>
+                    <div className="text-lg font-black italic text-white uppercase tracking-tighter">{session.session_name}</div>
+                  </div>
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                    <div className="flex items-center gap-2 text-gray-500 mb-3">
+                      <Thermometer size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Temp. Ar/Pista</span>
+                    </div>
+                    <div className="text-lg font-black italic text-white">{weather?.air_temperature || '--'}° / {weather?.track_temperature || '--'}°</div>
+                  </div>
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                    <div className="flex items-center gap-2 text-gray-500 mb-3">
+                      <Wind size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Vento</span>
+                    </div>
+                    <div className="text-lg font-black italic text-white">{weather?.wind_speed || '--'} km/h</div>
+                  </div>
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
+                    <div className="flex items-center gap-2 text-gray-500 mb-3">
+                      <CloudRain size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Chuva</span>
+                    </div>
+                    <div className="text-lg font-black italic text-white">{weather?.rainfall || 0}%</div>
+                  </div>
+                </div>
+
+                {/* Circuit Info */}
+                <div className="bg-white/5 p-8 rounded-[2rem] border border-white/10 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-f1-blue rounded-full blur-[60px] opacity-10" />
+                   <h3 className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mb-6">Informações do Circuito</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div>
+                        <span className="block text-[8px] text-gray-400 font-black uppercase mb-1">Localização</span>
+                        <span className="text-xl font-black italic text-white uppercase tracking-tighter">{session.location}, {session.country_name}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[8px] text-gray-400 font-black uppercase mb-1">Circuito</span>
+                        <span className="text-xl font-black italic text-white uppercase tracking-tighter">{session.circuit_short_name}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[8px] text-gray-400 font-black uppercase mb-1">Data de Início</span>
+                        <span className="text-xl font-black italic text-white uppercase tracking-tighter">
+                          {new Date(session.date_start).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Race Control Feed */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em]">Eventos da Sessão</h3>
+                    <div className="px-3 py-1 bg-f1-blue/20 text-f1-blue rounded-full text-[8px] font-black uppercase tracking-widest">Race Control</div>
+                  </div>
+                  <div className="space-y-4">
+                    {raceControl.length > 0 ? (
+                      raceControl.map((rc, i) => (
+                        <div key={i} className="flex gap-6 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 group">
+                           <span className="text-[10px] font-mono text-gray-500 mt-0.5">{new Date(rc.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                           <p className="text-sm font-bold uppercase italic tracking-tight text-gray-300 group-hover:text-white transition-colors">{rc.message}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-600 italic text-sm">
+                        Nenhuma mensagem de controle de corrida registrada para esta sessão ainda.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="pt-8 border-t border-white/10">
+                   <h3 className="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mb-4">Sobre o Episódio</h3>
+                   <p className="text-gray-400 leading-relaxed font-medium">
+                     {video.description}
+                   </p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center text-center space-y-4">
+                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-gray-600">
+                    <Info size={32} />
+                 </div>
+                 <div className="space-y-2">
+                    <p className="text-white font-black italic uppercase tracking-tighter">Dados em tempo real indisponíveis</p>
+                    <p className="text-gray-500 text-xs max-w-xs mx-auto font-medium">Não conseguimos localizar a telemetria específica para esta etapa na OpenF1 API no momento.</p>
+                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-8 border-t border-white/10 bg-black/40 flex justify-end">
+            <button 
+              onClick={onClose}
+              className="px-12 py-4 bg-white text-black rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+            >
+              Fechar Detalhes
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
 // --- Components ---
 
 const generateSlug = (text: string) => {
@@ -125,6 +471,9 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <>
+      {/* Live Race Banner */}
+      <LiveRaceBanner />
+      
       <nav className="fixed top-0 w-full z-50 bg-gradient-to-b from-black/90 via-black/40 to-transparent px-4 md:px-12 py-4 grid grid-cols-2 md:grid-cols-3 items-center backdrop-blur-sm md:backdrop-blur-none border-b border-white/5 md:border-none">
         {/* Left Section: Mobile Menu + Logo */}
         <div className="flex items-center gap-4">
@@ -1325,6 +1674,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [showFeaturedDetails, setShowFeaturedDetails] = useState(false);
   const [hasPromptedUpgrade, setHasPromptedUpgrade] = useState(false);
   const navigate = useNavigate();
 
@@ -1387,6 +1737,13 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden">
+      {featured && (
+        <FeaturedDetailsModal 
+          isOpen={showFeaturedDetails} 
+          onClose={() => setShowFeaturedDetails(false)} 
+          video={featured} 
+        />
+      )}
       {/* Hero Section - The "MAX" Experience */}
       {featured && (
         <div className="relative h-screen md:h-[90vh] w-full overflow-hidden">
@@ -1448,7 +1805,10 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                     >
                       <Play size={20} fill="black" /> Assistir Agora
                     </button>
-                    <button className="bg-white/10 text-white border border-white/20 px-8 py-5 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all backdrop-blur-md">
+                    <button 
+                      onClick={() => setShowFeaturedDetails(true)}
+                      className="bg-white/10 text-white border border-white/20 px-8 py-5 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all backdrop-blur-md"
+                    >
                       <Info size={18} /> Detalhes
                     </button>
                   </>
@@ -1593,6 +1953,10 @@ const Home = ({ profile }: { profile: Profile | null }) => {
           </Link>
         </div>
 
+        <div className="max-w-[1440px] mx-auto mt-20">
+           <LiveTrackingCard />
+        </div>
+
         {/* Dynamic Carousels per Category */}
         {categories.map((cat, idx) => (
           <div key={cat} className="space-y-8">
@@ -1731,8 +2095,119 @@ const Home = ({ profile }: { profile: Profile | null }) => {
   );
 };
 
+const LiveTrackingCard = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    const fetchLive = async () => {
+      const s = await openF1Service.getLatestSession();
+      if (s) {
+        const now = new Date();
+        const start = new Date(s.date_start);
+        const end = s.date_end ? new Date(s.date_end) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+        const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
+        setIsLive(live);
+        setSession(s);
+        if (live) {
+          const w = await openF1Service.getWeather(s.session_key);
+          setWeather(w);
+        }
+      }
+    };
+    fetchLive();
+    const interval = setInterval(fetchLive, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!isLive || !session) return null;
+
+  return (
+    <div className="mb-16">
+      <div className="flex items-center gap-3 mb-8 px-4 md:px-0">
+        <div className="w-1.5 h-8 bg-f1-blue" />
+        <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">Live Telemetry</h2>
+        <span className="ml-auto bg-f1-blue/20 text-f1-blue text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-f1-blue rounded-full animate-pulse" /> LIVE TRACKING
+        </span>
+      </div>
+
+      <div className="bg-dark-card border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+          <div className="p-8 space-y-4">
+             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Sessão Atual</span>
+             <div className="space-y-1">
+               <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-none">{session.country_name}</h3>
+               <p className="text-f1-blue font-black uppercase tracking-widest text-xs italic">{session.session_name}</p>
+             </div>
+             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest pt-2">
+               Circuito: <span className="text-gray-300">{session.circuit_short_name}</span>
+             </p>
+          </div>
+
+          <div className="p-8 bg-white/5 space-y-6">
+             <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                   <div className="flex items-center gap-2 text-gray-500">
+                      <Thermometer size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Pista</span>
+                   </div>
+                   <div className="text-2xl font-black italic text-white leading-none">{weather?.track_temperature || '--'}°C</div>
+                </div>
+                <div className="space-y-2 text-right lg:text-left">
+                   <div className="flex items-center gap-2 text-gray-500 justify-end lg:justify-start">
+                      <CloudRain size={14} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Precipitação</span>
+                   </div>
+                   <div className="text-2xl font-black italic text-white leading-none">{weather?.rainfall || 0}%</div>
+                </div>
+             </div>
+             <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-gray-500">
+                   <span>Umidade do Ar</span>
+                   <span className="text-white">{weather?.humidity || '--'} %</span>
+                </div>
+                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                   <div className="h-full bg-f1-blue transition-all duration-1000" style={{ width: `${weather?.humidity || 0}%` }} />
+                </div>
+             </div>
+          </div>
+
+          <div className="p-8 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-f1-blue/5 to-transparent">
+             <div className="text-center space-y-4 z-10">
+                <span className="inline-block py-1 px-3 bg-f1-blue/20 text-f1-blue rounded-full text-[8px] font-black uppercase tracking-[0.2em] mb-2 animate-pulse">Race Active</span>
+                <img 
+                  src="https://www.formula1.com/etc/designs/fom-website/images/f1_logo.svg" 
+                  className="h-4 mx-auto invert opacity-50 grayscale" 
+                  alt="F1"
+                />
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed">
+                  OpenF1 Real-time <br /> Telemetry Integration
+                </p>
+             </div>
+             <div className="absolute top-0 right-0 w-32 h-32 bg-f1-blue rounded-full blur-[80px] opacity-10" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | undefined, availableYears: number[], onSelect: (y: number) => void }) => {
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
+  const [liveYear, setLiveYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    const checkLiveYear = async () => {
+      const s = await openF1Service.getLatestSession();
+      if (s) {
+        const start = new Date(s.date_start);
+        setLiveYear(start.getFullYear());
+      }
+    };
+    checkLiveYear();
+  }, []);
 
   return (
     <div className="relative inline-block">
@@ -1741,6 +2216,9 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
         className="flex items-center gap-3 bg-white/5 border border-white/10 px-6 py-3 rounded-xl hover:bg-white/10 transition-all group"
       >
         <span className="text-sm font-black italic uppercase tracking-tighter">Temporada {year || '2026'}</span>
+        {liveYear === parseInt(year || '2026') && (
+           <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+        )}
         <ChevronDown size={18} className={cn("transition-transform duration-300", showSeasonDropdown ? "rotate-180" : "")} />
       </button>
 
@@ -1760,11 +2238,14 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
                   setShowSeasonDropdown(false);
                 }}
                 className={cn(
-                  "w-full text-left px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-white/5 transition-colors",
+                  "w-full text-left px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-white/5 transition-colors flex items-center justify-between",
                   parseInt(year || '2026') === y ? "text-f1-blue bg-f1-blue/5" : "text-gray-400"
                 )}
               >
                 Temporada {y}
+                {y === liveYear && (
+                   <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />
+                )}
               </button>
             ))}
           </motion.div>
