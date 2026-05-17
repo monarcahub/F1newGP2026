@@ -55,6 +55,8 @@ import { supabase, type Profile, type Video, type Reaction, type Comment, type P
 import { cn } from './lib/utils';
 import { openF1Service, type Session, type Weather, type RaceControl } from './services/openF1Service';
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 declare global {
   interface Window {
     chatwootSettings: any;
@@ -119,7 +121,7 @@ const LiveRaceBanner = () => {
         if (live) {
           const [w, rc] = await Promise.all([
             openF1Service.getWeather(latest.session_key),
-            openF1Service.getRaceControl(latest.session_key)
+            openF1Service.getRaceControlBySession(latest.session_key)
           ]);
           setWeather(w);
           setRaceControl(rc.slice(-3).reverse()); // Latest 3 messages
@@ -254,7 +256,7 @@ const FeaturedDetailsModal = ({ isOpen, onClose, video }: { isOpen: boolean, onC
         const yearSessions = await openF1Service.getSessionsByYear(video.year);
         
         // Simple keyword matching (e.g., GP name)
-        const keywords = video.title.toLowerCase().split(' ').filter(k => k.length > 3 && k !== '2026' && k !== 'formula');
+        const keywords = video.title.toLowerCase().split(' ').filter(k => k.length > 3 && k !== CURRENT_YEAR.toString() && k !== 'formula');
         
         const matchedSessions = yearSessions.filter(s => 
           keywords.some(k => 
@@ -463,7 +465,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
 
   const menuItems = [
     { label: 'Home', path: '/' },
-    { label: 'Temporada 2026', path: '/season/2026' },
+    { label: `Temporada ${CURRENT_YEAR}`, path: `/season/${CURRENT_YEAR}` },
     { label: 'PlayStream', path: '/playstream' },
     { label: 'Vídeos', path: '/archives' },
     { label: 'Blog', path: '/blog' },
@@ -1284,7 +1286,7 @@ const Footer = () => {
         <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Termos de Uso</a>
         <a href="#" className="hover:text-gray-400 transition-colors">Ajuda</a>
       </div>
-      <p className="mt-8 text-[10px] text-gray-700">© 2026 GRIDPLAY. Todos os direitos reservados.</p>
+      <p className="mt-8 text-[10px] text-gray-700">© {CURRENT_YEAR} GRIDPLAY. Todos os direitos reservados.</p>
     </footer>
   );
 };
@@ -1507,11 +1509,15 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
                 </li>
                 <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
                   <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  Apenas temporada atual (2024+)
+                  Apenas temporada atual ({CURRENT_YEAR}+)
                 </li>
                 <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
                   <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
                   R$10 / temporada avulsa
+                </li>
+                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
+                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                  Participação em Sorteios
                 </li>
               </ul>
               <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">GRÁTIS</div>
@@ -1544,6 +1550,18 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
                   <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
                     <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
                     Canal VIP Telegram
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    F1, F2, F3 e F1 Academy
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Treinos Livres/ Sprints, etc
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
+                    Onboards
                   </li>
                 </ul>
                 <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">
@@ -1587,7 +1605,15 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
                   </li>
                   <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
                     <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    Prioridade em novos conteúdos
+                    F1, F2, F3 e F1 Academy
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
+                    Treinos Livres/ Sprints, etc
+                  </li>
+                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
+                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
+                    Onboards
                   </li>
                 </ul>
                 <a 
@@ -1660,7 +1686,7 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
       {/* Mini Legal Footer */}
       <footer className="py-20 border-t border-white/5 text-center px-4">
         <p className="text-[10px] text-gray-600 max-w-2xl mx-auto leading-relaxed uppercase tracking-widest font-bold">
-          © 2026 GRIDPLAY. Este site não é oficial e não está associado de forma alguma ao grupo de empresas da Formula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX e marcas relacionadas são marcas comerciais da Formula One Licensing B.V.
+          © {CURRENT_YEAR} GRIDPLAY. Este site não é oficial e não está associado de forma alguma ao grupo de empresas da Formula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX e marcas relacionadas são marcas comerciais da Formula One Licensing B.V.
         </p>
       </footer>
     </div>
@@ -1701,12 +1727,12 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
   useEffect(() => {
     const fetchVideos = async () => {
-      // Filtering to only show 2026 Season on Home page carousels/feed
+      // Filtering to only show current Season on Home page carousels/feed
       // "Hidden" seasons will only be accessible via Archives and SeasonPage
       const { data, error } = await supabase
         .from('videos')
         .select('*')
-        .eq('year', 2026) // Only show 2026 on Home
+        .eq('year', CURRENT_YEAR) // Only show current year on Home
         .order('created_at', { ascending: true });
       
       if (data) setVideos(data);
@@ -1874,7 +1900,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                       <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-500">
                         <Film size={20} />
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest">Onboarding 2026</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Onboarding {CURRENT_YEAR}</span>
                     </div>
                     <ExternalLink size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-f1-blue transition-all" />
                   </a>
@@ -1929,22 +1955,22 @@ const Home = ({ profile }: { profile: Profile | null }) => {
           </motion.div>
         )}
         
-        {/* Season 2026 Promo Banner */}
+        {/* Season Promo Banner */}
         <div className="max-w-[1440px] mx-auto">
           <Link 
-            to="/season/2026"
+            to={`/season/${CURRENT_YEAR}`}
             className="group relative block w-full h-48 md:h-72 rounded-[2.5rem] overflow-hidden border border-white/10 hover:border-f1-blue/50 transition-all duration-700 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] bg-dark-card"
           >
             <img 
               src="https://i.ibb.co/ZzrBvMw7/onboad-camera-f1.jpg" 
-              alt="Temporada 2026"
+              alt={`Temporada ${CURRENT_YEAR}`}
               className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-1000 grayscale group-hover:grayscale-0"
               referrerPolicy="no-referrer"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
             <div className="absolute inset-0 flex flex-col justify-center p-8 md:p-16">
               <span className="text-f1-blue font-black tracking-[0.3em] text-[10px] mb-3 block uppercase">Exclusivo GridPlay</span>
-              <h2 className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase mb-4 leading-none">Temporada 2026</h2>
+              <h2 className="text-3xl md:text-6xl font-black italic tracking-tighter uppercase mb-4 leading-none">Temporada {CURRENT_YEAR}</h2>
               <p className="text-gray-400 text-xs md:text-base max-w-lg font-medium mb-8 opacity-80">Experimente a adrenalina pura com câmeras onboard exclusivas e telemetria em tempo real.</p>
               <div className="flex items-center gap-3 text-white font-black text-[10px] md:text-xs uppercase tracking-widest group-hover:gap-5 transition-all">
                 EXPLORAR TEMPORADA <div className="w-10 h-px bg-f1-blue group-hover:w-16 transition-all" /> <ChevronRight size={16} />
@@ -2009,7 +2035,7 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
               {profile.plan === 'FREE' && (
                 <Link to="/checkout" className="inline-flex items-center gap-3 text-citrus-yellow font-black text-xs uppercase tracking-[0.2em] group">
-                  DESBLOQUEAR ACERVO COMPLETO 1950-2026 
+                  DESBLOQUEAR ACERVO COMPLETO 1950-{CURRENT_YEAR} 
                   <ChevronRight size={16} className="group-hover:translate-x-2 transition-transform" />
                 </Link>
               )}
@@ -2215,9 +2241,9 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
         onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
         className="flex items-center gap-3 bg-white/5 border border-white/10 px-6 py-3 rounded-xl hover:bg-white/10 transition-all group"
       >
-        <span className="text-sm font-black italic uppercase tracking-tighter">Temporada {year || '2026'}</span>
-        {liveYear === parseInt(year || '2026') && (
-           <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+        <span className="text-sm font-black italic uppercase tracking-tighter">Temporada {year || CURRENT_YEAR.toString()}</span>
+        {liveYear === parseInt(year || CURRENT_YEAR.toString()) && (
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
         )}
         <ChevronDown size={18} className={cn("transition-transform duration-300", showSeasonDropdown ? "rotate-180" : "")} />
       </button>
@@ -2239,7 +2265,7 @@ const SeasonSelector = ({ year, availableYears, onSelect }: { year: string | und
                 }}
                 className={cn(
                   "w-full text-left px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-white/5 transition-colors flex items-center justify-between",
-                  parseInt(year || '2026') === y ? "text-f1-blue bg-f1-blue/5" : "text-gray-400"
+                  parseInt(year || CURRENT_YEAR.toString()) === y ? "text-f1-blue bg-f1-blue/5" : "text-gray-400"
                 )}
               >
                 Temporada {y}
@@ -2417,7 +2443,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
   const { year } = useParams();
   const navigate = useNavigate();
 
-  const currentYear = parseInt(year || '2026');
+  const currentYear = parseInt(year || CURRENT_YEAR.toString());
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -2439,7 +2465,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
         return;
       }
 
-      if (currentYear === 2026) {
+      if (currentYear === CURRENT_YEAR) {
         setHasAccess(true);
         fetchVideos();
         return;
@@ -3165,11 +3191,11 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
 
     if (profile.subscription_status === 'INACTIVE') return false;
 
-    // Default Season access (2026 is public for any active user?)
-    if (year === 2026) return true;
+    // Default Season access (Current year is public for any active user)
+    if (year === CURRENT_YEAR) return true;
 
     const plan = profile.plan;
-    if (plan === 'FREE' && year < 2026) return false;
+    if (plan === 'FREE' && year < CURRENT_YEAR) return false;
     if ((plan === 'MONTHLY' || plan === 'MENSAL') && year < 1981) return false;
     
     return true;
@@ -3811,6 +3837,9 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Filmes e Documentários</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Sem anúncios no site</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Canal VIP Telegram</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> F1, F2, F3 e F1 Academy</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Treinos Livres/ Sprints, etc</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Onboards</li>
             </ul>
             <a 
               href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1"
@@ -3843,7 +3872,9 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Tudo do plano mensal</li>
-              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Prioridade em novos conteúdos</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> F1, F2, F3 e F1 Academy</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Treinos Livres/ Sprints, etc</li>
+              <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Onboards</li>
             </ul>
             <a 
               href="https://pay.hotmart.com/C102920427K?off=dx3xefic"
@@ -4357,7 +4388,7 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
   // Form State
   const [newVideo, setNewVideo] = useState({
     title: '',
-    year: 2024,
+    year: CURRENT_YEAR,
     description: '',
     category: 'Temporada',
     embed_url: '',
@@ -4451,7 +4482,7 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
     }
     if (data) {
       setVideos([data[0], ...videos]);
-      setNewVideo({ title: '', year: 2024, description: '', category: 'Temporada', embed_url: '', telegram_url: '', status: 'PREMIUM', thumbnail_url: '' });
+      setNewVideo({ title: '', year: CURRENT_YEAR, description: '', category: 'Temporada', embed_url: '', telegram_url: '', status: 'PREMIUM', thumbnail_url: '' });
       alert("Vídeo adicionado com sucesso!");
     }
   };
