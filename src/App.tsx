@@ -3481,6 +3481,8 @@ const Login = ({ isModal = false, onLoginSuccess }: { isModal?: boolean, onLogin
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [recoverySent, setRecoverySent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
@@ -3544,6 +3546,25 @@ const Login = ({ isModal = false, onLoginSuccess }: { isModal?: boolean, onLogin
     setLoading(false);
   };
 
+  const handleRecovery = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Por favor, preencha seu e-mail.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      setError(error.message);
+    } else {
+      setRecoverySent(true);
+    }
+    setLoading(false);
+  };
+
   const content = (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -3561,80 +3582,158 @@ const Login = ({ isModal = false, onLoginSuccess }: { isModal?: boolean, onLogin
           referrerPolicy="no-referrer"
         />
         <p className="text-gray-400 text-sm">
-          {isSignUp ? "Crie sua conta para acessar o acervo" : "Acesse o maior acervo histórico da F1"}
+          {isForgotPassword 
+            ? "Recupere o acesso à sua conta" 
+            : isSignUp 
+              ? "Crie sua conta para acessar o acervo" 
+              : "Acesse o maior acervo histórico da F1"}
         </p>
       </div>
 
       {error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-3 rounded-md text-xs mb-6">{error}</div>}
 
-      <form className="space-y-4" onSubmit={isSignUp ? handleSignUp : handleLogin}>
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
-          <input 
-            type="email" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
-            placeholder="seu@email.com"
-            required
-          />
-        </div>
-        
-        {isSignUp && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-          >
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
-            <input 
-              type="tel" 
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors mb-4"
-              placeholder="(00) 00000-0000"
-              required
-            />
-          </motion.div>
-        )}
-
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha</label>
-          <div className="relative">
-            <input 
-              type={showPassword ? "text" : "password"} 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors pr-12"
-              placeholder="••••••••"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+      {isForgotPassword ? (
+        recoverySent ? (
+          <div className="space-y-6 text-center">
+            <div className="bg-green-500/10 border border-green-500/30 text-green-300 p-4 rounded-xl text-xs font-medium leading-relaxed">
+              Link de recuperação enviado com sucesso! Verifique sua caixa de entrada e pasta de spam no e-mail <strong className="text-white">{email}</strong>.
+            </div>
+            <button 
+              onClick={() => {
+                setIsForgotPassword(false);
+                setRecoverySent(false);
+                setError(null);
+              }}
+              className="text-xs font-bold text-gray-400 hover:text-f1-blue transition-colors uppercase tracking-widest"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              Voltar para o Login
             </button>
           </div>
-        </div>
+        ) : (
+          <form className="space-y-4" onSubmit={handleRecovery}>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
 
-        <button 
-          type="submit"
-          disabled={loading}
-          className="w-full bg-f1-blue text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 disabled:opacity-50"
-        >
-          {loading ? "Processando..." : (isSignUp ? "Criar Minha Conta" : "Entrar")}
-        </button>
-      </form>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full bg-f1-blue text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 disabled:opacity-50"
+            >
+              {loading ? "Enviando..." : "Enviar Link de Recuperação"}
+            </button>
 
-      <div className="mt-8 pt-6 border-t border-white/5 text-center">
-        <button 
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="text-xs font-bold text-gray-400 hover:text-f1-blue transition-colors uppercase tracking-widest"
-        >
-          {isSignUp ? "Já tem uma conta? Faça login" : "Não tem conta? Crie uma agora"}
-        </button>
-      </div>
+            <div className="pt-4 text-center">
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setError(null);
+                }}
+                className="text-xs font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-widest"
+              >
+                Voltar para o Login
+              </button>
+            </div>
+          </form>
+        )
+      ) : (
+        <>
+          <form className="space-y-4" onSubmit={isSignUp ? handleSignUp : handleLogin}>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">E-mail</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
+            
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+              >
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Telefone</label>
+                <input 
+                  type="tel" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors mb-4"
+                  placeholder="(00) 00000-0000"
+                  required
+                />
+              </motion.div>
+            )}
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-gray-500 uppercase">Senha</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setError(null);
+                    }}
+                    className="text-[10px] font-bold text-f1-blue hover:underline uppercase tracking-wider transition-colors"
+                  >
+                    Esqueceu a senha?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors pr-12"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full bg-f1-blue text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 disabled:opacity-50"
+            >
+              {loading ? "Processando..." : (isSignUp ? "Criar Minha Conta" : "Entrar")}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-white/5 text-center">
+            <button 
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
+              className="text-xs font-bold text-gray-400 hover:text-f1-blue transition-colors uppercase tracking-widest"
+            >
+              {isSignUp ? "Já tem uma conta? Faça login" : "Não tem conta? Crie uma agora"}
+            </button>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 
@@ -3904,6 +4003,129 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
         <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
       </div>
       {content}
+    </div>
+  );
+};
+
+const ResetPassword = () => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!password) {
+      setMessage({ type: 'error', text: 'Por favor, insira uma nova senha.' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      setMessage({ type: 'error', text: 'As senhas não coincidem.' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    const { error } = await supabase.auth.updateUser({
+      password: password
+    });
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message });
+    } else {
+      setMessage({ type: 'success', text: 'Senha atualizada com sucesso! Redirecionando para a página principal...' });
+      setTimeout(() => {
+        navigate('/');
+      }, 3000);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-32 bg-dark-bg relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://picsum.photos/seed/f1-reset/1920/1080?blur=10" 
+          className="w-full h-full object-cover opacity-20"
+          alt="Background"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
+      </div>
+      
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative w-full max-w-md bg-dark-card/90 backdrop-blur-xl p-8 rounded-2xl border border-white/10 z-10"
+      >
+        <div className="text-center mb-8 flex flex-col items-center">
+          <img 
+            src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+            alt="GRIDPLAY" 
+            className="h-12 md:h-16 object-contain mb-4"
+            referrerPolicy="no-referrer"
+          />
+          <h1 className="text-xl font-black italic uppercase tracking-tighter">Nova Senha</h1>
+          <p className="text-gray-400 text-xs mt-1">Defina sua nova senha de acesso</p>
+        </div>
+
+        {message && (
+          <div className={cn(
+            "p-4 rounded-xl text-xs mb-6 border font-medium leading-relaxed",
+            message.type === 'success' 
+              ? "bg-green-500/10 border-green-500/30 text-green-300" 
+              : "bg-red-500/10 border-red-500/30 text-red-300"
+          )}>
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Senha</label>
+            <div className="relative">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors pr-12"
+                placeholder="••••••••"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Confirmar Nova Senha</label>
+            <input 
+              type={showPassword ? "text" : "password"} 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-md px-4 py-3 text-white focus:border-f1-blue outline-none transition-colors"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-f1-blue text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-f1-blue/20 disabled:opacity-50"
+          >
+            {loading ? "Processando..." : "Redefinir Senha"}
+          </button>
+        </form>
+      </motion.div>
     </div>
   );
 };
@@ -5264,6 +5486,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home profile={profile} />} />
             <Route path="/login" element={profile ? <Navigate to="/" /> : <Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/watch/:id" element={<Watch profile={profile} />} />
             <Route path="/checkout" element={<Checkout profile={profile} />} />
             <Route path="/account" element={<Account profile={profile} />} />
