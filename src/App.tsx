@@ -33,7 +33,12 @@ import {
   Radio,
   CloudRain,
   Thermometer,
-  Wind
+  Wind,
+  Briefcase,
+  Mail,
+  Phone,
+  UserCheck,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1393,10 +1398,11 @@ const Footer = () => {
       <p className="text-gray-500 text-xs md:text-sm max-w-md leading-relaxed uppercase tracking-widest font-medium">
         Projeto institucional em apoio a sustentabilidade, tecnologia e esporte - MonarcaHub
       </p>
-      <div className="mt-12 flex gap-8 text-[10px] text-gray-600 uppercase font-bold tracking-tighter">
+      <div className="mt-12 flex flex-wrap justify-center gap-8 text-[10px] text-gray-600 uppercase font-bold tracking-tighter">
         <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Privacidade</a>
         <a href="https://www.monarcahub.com/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Termos de Uso</a>
         <a href="#" className="hover:text-gray-400 transition-colors">Ajuda</a>
+        <Link to="/seja-parceiro" className="hover:text-gray-400 transition-colors">Seja parceiro</Link>
       </div>
       <p className="mt-8 text-[10px] text-gray-700">© {CURRENT_YEAR} GRIDPLAY. Todos os direitos reservados.</p>
     </footer>
@@ -4713,10 +4719,11 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
 };
 
 const AdminPanel = ({ profile }: { profile: Profile | null }) => {
-  const [activeTab, setActiveTab] = useState<'cms' | 'crm' | 'stats' | 'blog'>('stats');
+  const [activeTab, setActiveTab] = useState<'cms' | 'crm' | 'stats' | 'blog' | 'voluntarios'>('stats');
   const [videos, setVideos] = useState<Video[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [volunteers, setVolunteers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Form State
@@ -4752,10 +4759,21 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
       if (vRes.data) setVideos(vRes.data);
       if (uRes.data) setUsers(uRes.data);
       if (pRes.data) setPosts(pRes.data);
+      
+      // Load volunteers from localStorage
+      try {
+        const stored = localStorage.getItem('gridplay-volunteers');
+        if (stored) {
+          setVolunteers(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.error("Failed to load volunteers from localStorage:", err);
+      }
+      
       setLoading(false);
     };
     fetchData();
-  }, [profile]);
+  }, [profile, activeTab]);
 
   // Statistics calculation logic
   const stats = useMemo(() => {
@@ -4928,6 +4946,12 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'blog' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
           >
             <FileText size={16} className="inline mr-2" /> Blog
+          </button>
+          <button 
+            onClick={() => setActiveTab('voluntarios')}
+            className={cn("px-6 py-2 rounded-md text-sm font-bold transition-colors", activeTab === 'voluntarios' ? "bg-f1-blue text-white" : "text-gray-400 hover:text-white")}
+          >
+            <UserCheck size={16} className="inline mr-2" /> Voluntários
           </button>
         </div>
       </div>
@@ -5282,6 +5306,75 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             </tbody>
           </table>
         </div>
+      ) : activeTab === 'voluntarios' ? (
+        <div className="bg-dark-card rounded-3xl border border-white/5 overflow-hidden shadow-2xl p-8 pb-16">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-white/5 pb-6">
+            <div>
+              <h2 className="text-xl font-black italic uppercase tracking-tighter text-white flex items-center gap-2">
+                <UserCheck className="text-f1-blue animate-pulse" size={24} /> Candidatos a Voluntariado
+              </h2>
+              <p className="text-xs text-gray-500 uppercase font-black tracking-widest mt-1">Total de {volunteers.length} inscrições recebidas</p>
+            </div>
+            {volunteers.length > 0 && (
+              <button 
+                onClick={() => {
+                  if (window.confirm("Deseja realmente limpar todos os candidatos salvos localmente?")) {
+                    localStorage.removeItem('gridplay-volunteers');
+                    setVolunteers([]);
+                  }
+                }}
+                className="text-[10px] text-red-500 hover:text-white hover:bg-red-500 border border-red-500/30 font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all duration-300 cursor-pointer"
+              >
+                Limpar Tudo
+              </button>
+            )}
+          </div>
+          {volunteers.length === 0 ? (
+            <div className="text-center py-20 text-gray-400">
+              <div className="w-16 h-16 bg-white/[0.02] border border-white/5 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <Users size={32} className="text-gray-600 animate-pulse" />
+              </div>
+              <p className="text-sm font-black uppercase tracking-widest text-gray-500 mb-1">Nenhum candidato voluntário registrado ainda</p>
+              <p className="text-xs text-gray-500">O formulário público "Seja parceiro" preenchido por candidatos aparecerá aqui.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {[...volunteers].reverse().map((vol, index) => (
+                <div key={vol.id || index} className="p-6 bg-black/45 border border-white/5 rounded-2xl space-y-4 hover:border-white/10 transition-all duration-300 shadow-xl shadow-black/10">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-lg font-black text-white italic tracking-tight">{vol.name}</h3>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5 text-xs text-gray-400">
+                        <span className="flex items-center gap-1.5"><Mail size={12} className="text-f1-blue" /> {vol.email}</span>
+                        <span className="text-gray-700 hidden md:inline">•</span>
+                        <span className="flex items-center gap-1.5"><Phone size={12} className="text-citrus-yellow" /> {vol.phone}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-mono bg-white/[0.03] px-3 py-1 rounded-md border border-white/5 self-start md:self-auto">
+                      {new Date(vol.submittedAt).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Funções de Interesse:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {vol.roles && vol.roles.map((role: string) => (
+                        <span key={role} className="text-[10px] bg-f1-blue/10 border border-f1-blue/20 text-f1-blue font-black px-2.5 py-1 rounded-md tracking-wide">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Carta de Apresentação &amp; Experiência:</h4>
+                    <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap bg-black border border-white/5 p-4 rounded-xl font-medium">
+                      {vol.about}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="grid lg:grid-cols-3 gap-8 pb-24">
           <div className="lg:col-span-1">
@@ -5406,6 +5499,273 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// --- Seja Parceiro Public Page ---
+const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
+  const [name, setName] = useState(profile?.full_name || '');
+  const [email, setEmail] = useState(profile?.email || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
+  const [about, setAbout] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const rolesList = [
+    "Gestor estratégico de marca",
+    "Social Media (faz postagens)",
+    "Designer pra redes sociais",
+    "Atendimento",
+    "Vendas",
+    "TI e Inteligência Artificial",
+    "Quero aprender sobre tudo!"
+  ];
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleRoleToggle = (role: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(role) 
+        ? prev.filter(r => r !== role) 
+        : [...prev, role]
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedRoles.length === 0) return;
+    setIsSubmitting(true);
+
+    // Save in local storage under 'gridplay-volunteers'
+    const newSubmission = {
+      id: Math.random().toString(36).substring(2, 9) + '-' + Date.now(),
+      name,
+      email,
+      phone,
+      about,
+      roles: selectedRoles,
+      submittedAt: new Date().toISOString()
+    };
+
+    try {
+      const existing = localStorage.getItem('gridplay-volunteers');
+      const submissions = existing ? JSON.parse(existing) : [];
+      submissions.push(newSubmission);
+      localStorage.setItem('gridplay-volunteers', JSON.stringify(submissions));
+    } catch (err) {
+      console.error("Local storage write failed:", err);
+    }
+
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }, 1200);
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-dark-bg text-white pt-32 pb-24 px-4 flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-25">
+          <div className="absolute top-[-20%] left-[-20%] w-[50%] h-[50%] bg-f1-blue rounded-full blur-[150px]" />
+          <div className="absolute bottom-[-20%] right-[-20%] w-[50%] h-[50%] bg-citrus-yellow rounded-full blur-[150px]" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 w-full max-w-lg bg-dark-card border border-white/5 p-8 md:p-12 rounded-[2.5rem] shadow-2xl text-center backdrop-blur-xl"
+        >
+          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-emerald-500/20">
+            <Check className="text-emerald-400" size={36} />
+          </div>
+
+          <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter mb-4 text-white">
+            Inscrição Recebida!
+          </h2>
+          <p className="text-gray-400 text-sm md:text-base leading-relaxed mb-8">
+            Obrigado pelo seu interesse em fazer parte do nosso time voluntário! Seus dados foram salvos com sucesso. Nossa equipe analisará seu perfil com carinho e entrará em contato em breve através do e-mail ou telefone informado.
+          </p>
+
+          <Link 
+            to="/" 
+            className="inline-block bg-f1-blue hover:bg-f1-blue/90 text-white font-bold uppercase tracking-widest text-xs px-8 py-4 rounded-xl transition-all duration-300 shadow-lg shadow-f1-blue/30 hover:shadow-f1-blue/50"
+          >
+            Voltar para a Home
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-dark-bg text-white pt-32 pb-24 px-4 relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-f1-blue rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-citrus-yellow rounded-full blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="text-[10px] bg-f1-blue/10 text-f1-blue border border-f1-blue/20 px-3 py-1.5 rounded-full font-black uppercase tracking-[0.2em] inline-block mb-4">
+            Embarque nessa velocidade
+          </span>
+          <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter mb-6 leading-none">
+            seja voluntário do projeto
+          </h1>
+          <p className="text-gray-300 text-sm md:text-base leading-relaxed max-w-3xl mx-auto font-medium">
+            Você ama velocidade, tecnologia, comunicação e sustentabilidade? O nosso projeto institucional é para você! Coloque F1 no seu currículo, se destaque e tenha a possibilidade de ser nosso colaborador efetivo, e também faturar no mercado de automobilismo, traga suas ideias!
+          </p>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-dark-card border border-white/5 rounded-[2.5rem] shadow-2xl p-6 md:p-12 backdrop-blur-md"
+        >
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <h2 className="text-lg font-black italic uppercase tracking-tight text-white mb-6 border-b border-white/5 pb-4 flex items-center gap-2">
+              <UserCheck className="text-f1-blue" size={20} /> Seus Dados Cadastrais
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Nome Completo</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-gray-500">
+                    <User size={16} />
+                  </span>
+                  <input 
+                    type="text" 
+                    required
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="w-full bg-black border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:border-f1-blue focus:ring-1 focus:ring-f1-blue outline-none transition-all"
+                    placeholder="Seu nome"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Seu E-mail</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-gray-500">
+                    <Mail size={16} />
+                  </span>
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full bg-black border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:border-f1-blue focus:ring-1 focus:ring-f1-blue outline-none transition-all"
+                    placeholder="seu@email.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Telefone com DDD</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-gray-500">
+                    <Phone size={16} />
+                  </span>
+                  <input 
+                    type="tel" 
+                    required
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    className="w-full bg-black border border-white/10 rounded-xl pl-12 pr-4 py-3 text-sm focus:border-f1-blue focus:ring-1 focus:ring-f1-blue outline-none transition-all"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Status</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-gray-500">
+                    <Briefcase size={16} />
+                  </span>
+                  <input 
+                    type="text"
+                    value="Inscrição de Voluntariado"
+                    disabled
+                    className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-xs text-gray-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 font-black">Escreva sobre si mesmo e sua experiência</label>
+              <textarea 
+                required
+                value={about}
+                onChange={e => setAbout(e.target.value)}
+                className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-f1-blue focus:ring-1 focus:ring-f1-blue outline-none transition-all h-36 resize-y"
+                placeholder="Conte um pouco sobre você, seu background, sonhos, suas ideias e como você pode agregar ao GRIDPLAY..."
+              />
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                Funções de Interesse (Selecione uma ou mais)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {rolesList.map((role) => {
+                  const isChecked = selectedRoles.includes(role);
+                  return (
+                    <div 
+                      key={role} 
+                      onClick={() => handleRoleToggle(role)}
+                      className={cn(
+                        "flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 select-none",
+                        isChecked 
+                          ? "bg-f1-blue/15 border-f1-blue text-white" 
+                          : "bg-black/40 border-white/5 hover:border-white/15 text-gray-400 hover:text-white"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-5 h-5 rounded flex items-center justify-center border transition-all duration-200",
+                        isChecked ? "bg-f1-blue border-f1-blue" : "border-gray-600"
+                      )}>
+                        {isChecked && <Check size={12} className="text-white font-black" />}
+                      </div>
+                      <span className="text-sm font-bold">{role}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-[10px] text-gray-500 italic max-w-md text-center md:text-left">
+                Ao enviar suas informações, você concorda que o GRIDPLAY entre em contato com você para tratar de oportunidade de voluntariado institucional.
+              </p>
+              <button 
+                type="submit" 
+                disabled={isSubmitting || selectedRoles.length === 0}
+                className={cn(
+                  "w-full md:w-auto bg-f1-blue text-white font-bold uppercase tracking-widest text-xs px-10 py-4 rounded-xl transition-all duration-300 shadow-xl",
+                  selectedRoles.length === 0 
+                    ? "opacity-50 cursor-not-allowed bg-gray-700 shadow-none text-gray-400" 
+                    : "hover:bg-f1-blue/90 hover:shadow-f1-blue/30 cursor-pointer"
+                )}
+              >
+                {isSubmitting ? "Enviando proposta..." : "Enviar Candidatura"}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
     </div>
   );
 };
@@ -5608,6 +5968,7 @@ export default function App() {
             <Route path="/playstream" element={<PlayStream profile={profile} />} />
             <Route path="/blog" element={<Blog profile={profile} />} />
             <Route path="/blog/:slug" element={<BlogPost profile={profile} />} />
+            <Route path="/seja-parceiro" element={<SejaParceiro profile={profile} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
