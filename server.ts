@@ -54,6 +54,16 @@ async function startServer() {
         try {
           errorBody = await fetchResponse.text();
         } catch (_) {}
+
+        if (fetchResponse.status === 401) {
+          console.log("[OpenF1 Graceful Handling] Status 401: Live session restricted. Switching to high-fidelity simulated fallback.");
+          return res.status(401).json({
+            error: "OpenF1 API is currently restricted due to an active live session. Fallback data will be used.",
+            detail: errorBody,
+            isRestricted: true
+          });
+        }
+
         console.error(`OpenF1 API returned status ${fetchResponse.status}. Body:`, errorBody);
         throw new Error(`OpenF1 API returned status ${fetchResponse.status}: ${errorBody.slice(0, 200)}`);
       }

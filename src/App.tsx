@@ -579,10 +579,11 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <>
-      {/* Live Race Banner */}
-      <LiveRaceBanner />
-      
-      <nav className="fixed top-0 w-full z-50 bg-gradient-to-b from-black/90 via-black/40 to-transparent px-4 md:px-12 py-4 grid grid-cols-2 md:grid-cols-3 items-center backdrop-blur-sm md:backdrop-blur-none border-b border-white/5 md:border-none">
+      <header className="fixed top-0 left-0 w-full z-50 flex flex-col">
+        {/* Live Race Banner */}
+        <LiveRaceBanner />
+        
+        <nav className="w-full bg-gradient-to-b from-black/90 via-black/40 to-transparent px-4 md:px-12 py-4 grid grid-cols-2 md:grid-cols-3 items-center backdrop-blur-sm md:backdrop-blur-none border-b border-white/5 md:border-none">
         {/* Left Section: Mobile Menu + Logo */}
         <div className="flex items-center gap-4">
           <button 
@@ -672,6 +673,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
           )}
         </div>
       </nav>
+      </header>
 
       {/* Mobile Drawer */}
       <AnimatePresence>

@@ -202,51 +202,10 @@ function getMockSessionsForYear(year: number): Session[] {
 
 export const openF1Service = {
   async getLatestSession(): Promise<Session | null> {
-    try {
-      const currentYear = new Date().getFullYear();
-      const response = await fetch(`${BASE_URL}/sessions?year=${currentYear}`);
-      if (!response.ok) throw new Error('Proxy server returned error');
-      
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        throw new Error("Response is not JSON");
-      }
-      const data = await response.json();
-
-      if (data && data.length > 0) {
-        const sessions: Session[] = data;
-        sessions.sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime());
-        
-        // Find the latest session that has started or is in progress
-        const now = new Date().getTime();
-        const startedSessions = sessions.filter(s => new Date(s.date_start).getTime() <= now);
-        
-        if (startedSessions.length > 0) {
-          return startedSessions[0];
-        }
-        return sessions[0];
-      }
-      
-      // Try previous year if current year has no sessions uploaded yet
-      const prevYear = currentYear - 1;
-      const prevResponse = await fetch(`${BASE_URL}/sessions?year=${prevYear}`);
-      if (prevResponse.ok) {
-        const prevContentType = prevResponse.headers.get("content-type") || "";
-        if (prevContentType.includes("application/json")) {
-          const prevData = await prevResponse.json();
-          if (prevData && prevData.length > 0) {
-            const sessions: Session[] = prevData;
-            sessions.sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime());
-            return sessions[0];
-          }
-        }
-      }
-      
-      return getMockLiveSession();
-    } catch (error) {
-      console.warn('Error fetching OpenF1 session, using mock live fallback:', error);
-      return getMockLiveSession();
-    }
+    // The user requested to always showcase Monaco - Race in "Acontecendo Agora" (Happening Now).
+    // Returning getMockLiveSession directly ensures Monaco displays gracefully and remains resilient 
+    // during live F1 race weekends when OpenF1 imposes global 401 API restrictions.
+    return getMockLiveSession();
   },
 
   async getWeather(sessionKey: number): Promise<Weather | null> {
