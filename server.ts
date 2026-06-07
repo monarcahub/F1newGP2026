@@ -31,6 +31,41 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // OpenF1 API Proxy
+  app.get("/api/openf1/*", async (req: express.Request, res: express.Response) => {
+    try {
+      const subUrl = req.originalUrl.replace(/^\/api\/openf1\/?/, "");
+      const targetUrl = `https://api.openf1.org/v1/${subUrl}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+      const fetchResponse = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json"
+        }
+      });
+      clearTimeout(timeoutId);
+
+      if (!fetchResponse.ok) {
+        let errorBody = "";
+        try {
+          errorBody = await fetchResponse.text();
+        } catch (_) {}
+        console.error(`OpenF1 API returned status ${fetchResponse.status}. Body:`, errorBody);
+        throw new Error(`OpenF1 API returned status ${fetchResponse.status}: ${errorBody.slice(0, 200)}`);
+      }
+
+      const data = await fetchResponse.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("OpenF1 proxy request failed:", error.message);
+      res.status(502).json({ error: error.message || "Failed to fetch from OpenF1 API" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

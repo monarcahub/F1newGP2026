@@ -252,31 +252,137 @@ const FeaturedDetailsModal = ({ isOpen, onClose, video }: { isOpen: boolean, onC
     if (isOpen && video) {
       const fetchDetails = async () => {
         setLoading(true);
-        // Step 1: Find session for this video year and title keywords
-        const yearSessions = await openF1Service.getSessionsByYear(video.year);
-        
-        // Simple keyword matching (e.g., GP name)
-        const keywords = video.title.toLowerCase().split(' ').filter(k => k.length > 3 && k !== CURRENT_YEAR.toString() && k !== 'formula');
-        
-        const matchedSessions = yearSessions.filter(s => 
-          keywords.some(k => 
-            s.location.toLowerCase().includes(k) || 
-            s.country_name.toLowerCase().includes(k) ||
-            s.session_name.toLowerCase().includes(k)
-          )
-        );
+        setSession(null);
+        setWeather(null);
+        setRaceControl([]);
 
-        // Prefer "Race" session if multiple sessions found
-        const bestSession = matchedSessions.find(s => s.session_name.toLowerCase().includes('race')) || matchedSessions[0];
+        const normalizeText = (text: string) => 
+          text ? text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : '';
+
+        // Simple keyword matching (e.g., GP name)
+        const titleNormalized = normalizeText(video.title);
+        const keywords = titleNormalized
+          .split(/[\s-—_]+/)
+          .map(k => k.trim())
+          .filter(k => k.length > 2 && !['formula', 'grand', 'prix', 'video', 'corrida', 'etapa', 'treino', 'classificacao', 'gp', 'de', 'do', 'da', 'ao', 'tempo', 'real', 'vivo'].includes(k));
+
+        // Maps Portuguese GP countries & locations to OpenF1 English values
+        const countryMappings: { [key: string]: string[] } = {
+          'canada': ['canada', 'montreal'],
+          'monaco': ['monaco', 'monte carlo'],
+          'espanha': ['spain', 'barcelona', 'catalunya'],
+          'catalunha': ['spain', 'barcelona', 'catalunya'],
+          'inglaterra': ['great britain', 'silverstone', 'united kingdom'],
+          'gra-bretanha': ['great britain', 'silverstone', 'united kingdom'],
+          'italia': ['italy', 'monza', 'imola', 'milan'],
+          'belgica': ['belgium', 'spa', 'francorchamps'],
+          'holanda': ['netherlands', 'zandvoort'],
+          'austria': ['austria', 'spielberg', 'red bull ring'],
+          'hungria': ['hungary', 'budapest', 'hungaroring'],
+          'singapura': ['singapore', 'marina bay'],
+          'cingapura': ['singapore', 'marina bay'],
+          'japao': ['japan', 'suzuka'],
+          'eua': ['united states', 'austin', 'miami', 'las vegas'],
+          'estados unidos': ['united states', 'austin', 'miami', 'las vegas'],
+          'azerbaijao': ['azerbaijan', 'baku'],
+          'catar': ['qatar', 'lusail'],
+          'arabia saudita': ['saudi arabia', 'jeddah'],
+          'bahrein': ['bahrain', 'sakhir'],
+          'emirados arabes': ['abu dhabi', 'yas marina'],
+          'sao paulo': ['brazil', 'sao paulo', 'interlagos'],
+          'brasil': ['brazil', 'sao paulo', 'interlagos'],
+        };
+
+        const searchTerms = [...keywords];
+        keywords.forEach(k => {
+          if (countryMappings[k]) {
+            searchTerms.push(...countryMappings[k]);
+          }
+        });
+
+        let bestSession: Session | null = null;
+
+        // Try looking up the current live session first since a live race is happening right now!
+        try {
+          const liveSession = await openF1Service.getLatestSession();
+          if (liveSession) {
+            const locLoc = normalizeText(liveSession.location);
+            const countryLoc = normalizeText(liveSession.country_name);
+            const nameLoc = normalizeText(liveSession.session_name);
+            
+            const matchesLive = searchTerms.some(term => 
+              locLoc.includes(term) || 
+              countryLoc.includes(term) ||
+              nameLoc.includes(term)
+            );
+
+            // If it matches by location, or if we have a live session right now and the video is the general featured one
+            if (matchesLive || video.title.toLowerCase().includes('ao vivo')) {
+              bestSession = liveSession;
+            }
+          }
+        } catch (e) {
+          console.error('Error finding live session fallback:', e);
+        }
+
+        // If no matches found in active live session cache, fallback sequentially across years
+        if (!bestSession) {
+          const yearsToSearch = [
+            video.year,
+            new Date().getFullYear(),
+            2024,
+            2023
+          ];
+          const uniqueYears = Array.from(new Set(yearsToSearch.filter(y => typeof y === 'number' && y > 1950)));
+
+          for (const searchYear of uniqueYears) {
+            try {
+              const yearSessions = await openF1Service.getSessionsByYear(searchYear);
+              if (yearSessions && yearSessions.length > 0) {
+                const matched = yearSessions.filter(s => {
+                  const locLoc = normalizeText(s.location);
+                  const countryLoc = normalizeText(s.country_name);
+                  const nameLoc = normalizeText(s.session_name);
+                  return searchTerms.some(term => 
+                    locLoc.includes(term) || 
+                    countryLoc.includes(term) ||
+                    nameLoc.includes(term)
+                  );
+                });
+                
+                if (matched.length > 0) {
+                  // Prefer the race session, otherwise take first match
+                  bestSession = matched.find(s => normalizeText(s.session_name).includes('race')) || matched[0];
+                  break; 
+                }
+              }
+            } catch (err) {
+              console.error(`Error searching sessions for year ${searchYear}:`, err);
+            }
+          }
+        }
+
+        // Ultimate Fallback: Default to whatever latest session OpenF1 has if we really found nothing else
+        if (!bestSession) {
+          try {
+            bestSession = await openF1Service.getLatestSession();
+          } catch (e) {
+            console.error('Final fallback failed:', e);
+          }
+        }
 
         if (bestSession) {
           setSession(bestSession);
-          const [w, rc] = await Promise.all([
-            openF1Service.getWeather(bestSession.session_key),
-            openF1Service.getRaceControlBySession(bestSession.session_key)
-          ]);
-          setWeather(w);
-          setRaceControl(rc.slice(0, 10)); // Top 10 events
+          try {
+            const [w, rc] = await Promise.all([
+              openF1Service.getWeather(bestSession.session_key),
+              openF1Service.getRaceControlBySession(bestSession.session_key)
+            ]);
+            setWeather(w);
+            setRaceControl(rc.slice(0, 10)); // Top 10 events
+          } catch (e) {
+            console.error('Error loading session attributes:', e);
+          }
         }
         setLoading(false);
       };
@@ -817,38 +923,42 @@ const PixelTracker = () => {
 
   useEffect(() => {
     // Meta Pixel Base Code
-    if (!import.meta.env.VITE_FB_PIXEL_ID) return;
-
     const pixelId = import.meta.env.VITE_FB_PIXEL_ID;
+    if (!pixelId) return;
 
-    // @ts-ignore
-    if (!window.fbq) {
-      // @ts-ignore
-      !(function (f, b, e, v, n, t, s) {
-        if (f.fbq) return;
-        n = f.fbq = function () {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = !0;
-        n.version = "2.0";
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = !0;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+    const w = window as any;
+    if (!w.fbq) {
+      w.fbq = function (...args: any[]) {
+        if (w.fbq.callMethod) {
+          w.fbq.callMethod.apply(w.fbq, args);
+        } else {
+          w.fbq.queue.push(args);
+        }
+      };
+      w.fbq.push = w.fbq;
+      w.fbq.loaded = true;
+      w.fbq.version = "2.0";
+      w.fbq.queue = [];
 
-      // @ts-ignore
-      window.fbq("init", pixelId);
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://connect.facebook.net/en_US/fbevents.js";
+      const firstScript = document.getElementsByTagName("script")[0];
+      if (firstScript && firstScript.parentNode) {
+        firstScript.parentNode.insertBefore(script, firstScript);
+      } else {
+        document.head.appendChild(script);
+      }
+
+      w.fbq("init", pixelId);
     }
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.VITE_FB_PIXEL_ID && (window as any).fbq) {
-      (window as any).fbq("track", "PageView");
+    const pixelId = import.meta.env.VITE_FB_PIXEL_ID;
+    const w = window as any;
+    if (pixelId && w.fbq) {
+      w.fbq("track", "PageView");
     }
   }, [location.pathname]);
 
