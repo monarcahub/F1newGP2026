@@ -119,7 +119,10 @@ const LiveRaceBanner = () => {
         const end = latest.date_end ? new Date(latest.date_end) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
         
         // Is live if now is between start and end (with 15 min buffer after end)
-        const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
+        // Undesired starting from Monday, so we restrict it to Friday (5), Saturday (6), and Sunday (0)
+        const dayOfWeek = now.getDay();
+        const isLiveDay = dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6;
+        const live = isLiveDay && now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
         setIsLive(live);
         setSession(latest);
 
