@@ -86,3 +86,14 @@ export type Comment = {
     email: string;
   };
 };
+
+export type Volunteer = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  about: string;
+  roles: string[];
+  created_at: string;
+};
+

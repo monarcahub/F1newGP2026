@@ -137,4 +137,25 @@
   CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+  -- Create f1volunteers table for volunteer applications
+  CREATE TABLE IF NOT EXISTS public.f1volunteers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    about TEXT NOT NULL,
+    roles TEXT[] NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+  );
+
+  -- Enable RLS
+  ALTER TABLE public.f1volunteers ENABLE ROW LEVEL SECURITY;
+
+  -- f1volunteers Policies
+  DROP POLICY IF EXISTS "Anyone can insert volunteer applications" ON public.f1volunteers;
+  DROP POLICY IF EXISTS "Admins can view and manage volunteer applications" ON public.f1volunteers;
+
+  CREATE POLICY "Anyone can insert volunteer applications" ON public.f1volunteers FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Admins can view and manage volunteer applications" ON public.f1volunteers FOR ALL USING (public.is_admin());
 */

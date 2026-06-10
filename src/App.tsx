@@ -56,7 +56,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
-import { supabase, type Profile, type Video, type Reaction, type Comment, type Post, type PostReaction, type PostComment } from './lib/supabase';
+import { supabase, type Profile, type Video, type Reaction, type Comment, type Post, type PostReaction, type PostComment, type Volunteer } from './lib/supabase';
 import { cn } from './lib/utils';
 import { openF1Service, type Session, type Weather, type RaceControl } from './services/openF1Service';
 
@@ -4763,15 +4763,31 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
       if (uRes.data) setUsers(uRes.data);
       if (pRes.data) setPosts(pRes.data);
       
-      // Load volunteers from localStorage
+      // Fetch volunteers from Supabase 'f1volunteers' with a fallback to localStorage
+      let fetchedVolunteers: any[] = [];
       try {
-        const stored = localStorage.getItem('gridplay-volunteers');
-        if (stored) {
-          setVolunteers(JSON.parse(stored));
+        const { data, error } = await supabase.from('f1volunteers').select('*').order('created_at', { ascending: false });
+        if (error) {
+          throw error;
+        }
+        if (data) {
+          fetchedVolunteers = data;
         }
       } catch (err) {
-        console.error("Failed to load volunteers from localStorage:", err);
+        console.warn("Failed to fetch f1volunteers from Supabase. Falling back to localStorage:", err);
+        try {
+          const stored = localStorage.getItem('gridplay-volunteers');
+          if (stored) {
+            fetchedVolunteers = JSON.parse(stored).map((item: any) => ({
+              ...item,
+              created_at: item.submittedAt || item.created_at
+            }));
+          }
+        } catch (localErr) {
+          console.error("Failed to parse local volunteers:", localErr);
+        }
       }
+      setVolunteers(fetchedVolunteers);
       
       setLoading(false);
     };
@@ -5342,21 +5358,23 @@ const AdminPanel = ({ profile }: { profile: Profile | null }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {[...volunteers].reverse().map((vol, index) => (
-                <div key={vol.id || index} className="p-6 bg-black/45 border border-white/5 rounded-2xl space-y-4 hover:border-white/10 transition-all duration-300 shadow-xl shadow-black/10">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4">
-                    <div>
-                      <h3 className="text-lg font-black text-white italic tracking-tight">{vol.name}</h3>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5 text-xs text-gray-400">
-                        <span className="flex items-center gap-1.5"><Mail size={12} className="text-f1-blue" /> {vol.email}</span>
-                        <span className="text-gray-700 hidden md:inline">•</span>
-                        <span className="flex items-center gap-1.5"><Phone size={12} className="text-citrus-yellow" /> {vol.phone}</span>
+              {[...volunteers]
+                .sort((a, b) => new Date(b.created_at || b.submittedAt || 0).getTime() - new Date(a.created_at || a.submittedAt || 0).getTime())
+                .map((vol, index) => (
+                  <div key={vol.id || index} className="p-6 bg-black/45 border border-white/5 rounded-2xl space-y-4 hover:border-white/10 transition-all duration-300 shadow-xl shadow-black/10">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4">
+                      <div>
+                        <h3 className="text-lg font-black text-white italic tracking-tight">{vol.name}</h3>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5 text-xs text-gray-400">
+                          <span className="flex items-center gap-1.5"><Mail size={12} className="text-f1-blue" /> {vol.email}</span>
+                          <span className="text-gray-700 hidden md:inline">•</span>
+                          <span className="flex items-center gap-1.5"><Phone size={12} className="text-citrus-yellow" /> {vol.phone}</span>
+                        </div>
                       </div>
+                      <span className="text-[10px] text-gray-500 font-mono bg-white/[0.03] px-3 py-1 rounded-md border border-white/5 self-start md:self-auto">
+                        {new Date(vol.created_at || vol.submittedAt || Date.now()).toLocaleString('pt-BR')}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-mono bg-white/[0.03] px-3 py-1 rounded-md border border-white/5 self-start md:self-auto">
-                      {new Date(vol.submittedAt).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
                   <div>
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Funções de Interesse:</h4>
                     <div className="flex flex-wrap gap-2">
@@ -5515,6 +5533,7 @@ const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const rolesList = [
     "Gestor estratégico de marca",
@@ -5538,35 +5557,100 @@ const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedRoles.length === 0) return;
+    if (selectedRoles.length === 0) {
+      setErrorMsg("Por favor, selecione pelo menos uma função de interesse.");
+      return;
+    }
     setIsSubmitting(true);
+    setErrorMsg(null);
 
-    // Save in local storage under 'gridplay-volunteers'
-    const newSubmission = {
-      id: Math.random().toString(36).substring(2, 9) + '-' + Date.now(),
-      name,
-      email,
-      phone,
-      about,
-      roles: selectedRoles,
-      submittedAt: new Date().toISOString()
-    };
+    // Generate accurate client-side UUID v4 to send same ID to DB, local, and Webhook
+    const applicationId = (() => {
+      if (typeof crypto !== "undefined" && crypto.randomUUID) {
+        try {
+          return crypto.randomUUID();
+        } catch (e) {}
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    })();
+
+    const submittedAtStr = new Date().toISOString();
 
     try {
-      const existing = localStorage.getItem('gridplay-volunteers');
-      const submissions = existing ? JSON.parse(existing) : [];
-      submissions.push(newSubmission);
-      localStorage.setItem('gridplay-volunteers', JSON.stringify(submissions));
-    } catch (err) {
-      console.error("Local storage write failed:", err);
-    }
+      // 1. Save directly to Supabase table 'f1volunteers', providing our calculated uuid
+      // We don't use .select() here because otherwise Postgres requires SELECT privileges for anon users,
+      // which triggers an RLS violation. By omitting .select(), the insert only executes INSERT RLS.
+      const { error } = await supabase.from('f1volunteers').insert([
+        {
+          id: applicationId,
+          name,
+          email,
+          phone,
+          about,
+          roles: selectedRoles,
+          created_at: submittedAtStr
+        }
+      ]);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+      if (error) {
+        throw error;
+      }
+
+      // 2. Also keep a local backup in localStorage so user has immediate feedback if needed
+      const newSubmission = {
+        id: applicationId,
+        name,
+        email,
+        phone,
+        about,
+        roles: selectedRoles,
+        submittedAt: submittedAtStr
+      };
+
+      try {
+        const existing = localStorage.getItem('gridplay-volunteers');
+        const submissions = existing ? JSON.parse(existing) : [];
+        submissions.push(newSubmission);
+        localStorage.setItem('gridplay-volunteers', JSON.stringify(submissions));
+      } catch (err) {
+        console.error("Local storage write failed:", err);
+      }
+
+      // 3. Fire-and-forget/best-effort post request to the specified webhooks URL
+      try {
+        await fetch('https://webhook.monarcahub.com/webhook/parceiros-f1', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event: 'new_volunteer_application',
+            id: applicationId,
+            name,
+            email,
+            phone,
+            about,
+            roles: selectedRoles,
+            submittedAt: submittedAtStr
+          }),
+        });
+      } catch (webhookErr) {
+        console.error("Warning: webhook delivery failed but database persist succeeded:", webhookErr);
+      }
+
       setSubmitted(true);
-    }, 1200);
+    } catch (err: any) {
+      console.error("Error submitting volunteer application to Supabase:", err);
+      setErrorMsg(err?.message || "Erro desconhecido. Verifique se o script SQL foi executado.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -5748,6 +5832,13 @@ const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
                 })}
               </div>
             </div>
+            
+            {errorMsg && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold uppercase tracking-wide">
+                ⚠️ Erro ao salvar candidatura no banco de dados: {errorMsg}
+                <p className="mt-1 font-normal lowercase normal-case text-gray-400">Certifique-se de executar o script SQL para a tabela 'f1volunteers' no editor do Supabase.</p>
+              </div>
+            )}
 
             <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-[10px] text-gray-500 italic max-w-md text-center md:text-left">
