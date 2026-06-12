@@ -1140,13 +1140,54 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
   }, [videoId]);
 
   const fetchComments = async () => {
-    const { data, error } = await supabase
+    // 1. Fetch raw comments
+    const { data: rawComments, error: commentsErr } = await supabase
       .from('f1comments')
-      .select('*, f1profiles(full_name, email)')
+      .select('*')
       .eq('video_id', videoId)
       .order('created_at', { ascending: true });
 
-    if (data) setComments(data);
+    if (commentsErr) {
+      console.error("Erro ao carregar comentários do Supabase:", commentsErr);
+      setLoading(false);
+      return;
+    }
+
+    if (!rawComments || rawComments.length === 0) {
+      setComments([]);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fetch profiles for distinct users who commented
+    const userIds = Array.from(new Set(rawComments.map(c => c.user_id).filter(Boolean)));
+    const profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesErr } = await supabase
+        .from('f1profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      if (profilesErr) {
+        console.error("Erro ao carregar f1profiles para os comentários:", profilesErr);
+      } else if (profiles) {
+        profiles.forEach(p => {
+          profilesMap[p.id] = {
+            full_name: p.full_name,
+            email: p.email
+          };
+        });
+      }
+    }
+
+    // 3. Merge profiles data into the comments state
+    const commentsWithProfiles: Comment[] = rawComments.map(c => ({
+      ...c,
+      f1profiles: profilesMap[c.user_id] || undefined
+    }));
+
+    setComments(commentsWithProfiles);
     setLoading(false);
   };
 
@@ -1163,7 +1204,9 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
         parent_id: replyTo
       });
 
-    if (!error) {
+    if (error) {
+      console.error("Erro ao enviar comentário para o Supabase:", error);
+    } else {
       setNewComment('');
       setReplyTo(null);
       fetchComments();
@@ -1187,7 +1230,7 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
           )}
           <div className="flex gap-4">
             <div className="w-10 h-10 rounded-full bg-f1-blue/20 flex items-center justify-center text-f1-blue font-bold shrink-0">
-              {profile.email[0].toUpperCase()}
+              {(profile.email?.[0] || 'U').toUpperCase()}
             </div>
             <div className="flex-1 relative">
               <textarea 
@@ -1218,11 +1261,13 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
           <div key={comment.id} className="group">
             <div className="flex gap-4">
               <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 font-bold shrink-0">
-                {comment.f1profiles?.email[0].toUpperCase() || '?'}
+                {(comment.f1profiles?.email?.[0] || comment.f1profiles?.full_name?.[0] || '?').toUpperCase()}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-bold">{comment.f1profiles?.full_name || comment.f1profiles?.email.split('@')[0]}</span>
+                  <span className="text-sm font-bold">
+                    {comment.f1profiles?.full_name || comment.f1profiles?.email?.split('@')?.[0] || 'Parceiro GRIDPLAY'}
+                  </span>
                   <span className="text-[10px] text-gray-600 font-medium">{new Date(comment.created_at).toLocaleDateString()}</span>
                 </div>
                 <p className="text-sm text-gray-300 leading-relaxed">{comment.content}</p>
@@ -1244,11 +1289,13 @@ const CommentSection = ({ videoId, profile }: { videoId: string, profile: Profil
                     <div key={reply.id}>
                       <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-gray-500 text-xs font-bold shrink-0">
-                          {reply.f1profiles?.email[0].toUpperCase() || '?'}
+                          {(reply.f1profiles?.email?.[0] || reply.f1profiles?.full_name?.[0] || '?').toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold">{reply.f1profiles?.full_name || reply.f1profiles?.email.split('@')[0]}</span>
+                            <span className="text-xs font-bold">
+                              {reply.f1profiles?.full_name || reply.f1profiles?.email?.split('@')?.[0] || 'Parceiro GRIDPLAY'}
+                            </span>
                             <span className="text-[10px] text-gray-700">{new Date(reply.created_at).toLocaleDateString()}</span>
                           </div>
                           <p className="text-xs text-gray-400 leading-relaxed">{reply.content}</p>
@@ -1925,19 +1972,21 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                 {featured.title}
               </h1>
               
-              <div className="flex items-center gap-4 mb-8">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-citrus-yellow font-black uppercase tracking-[0.2em]">A partir de</span>
-                  <div className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
-                    R$ 14,00<span className="text-sm md:text-lg font-normal text-gray-400 not-italic ml-1">/mês</span>
+              {!(profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE') && (
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-citrus-yellow font-black uppercase tracking-[0.2em]">A partir de</span>
+                    <div className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
+                      R$ 14,00<span className="text-sm md:text-lg font-normal text-gray-400 not-italic ml-1">/mês</span>
+                    </div>
+                  </div>
+                  <div className="h-10 w-px bg-white/20 ml-4" />
+                  <div className="flex flex-col ml-4">
+                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Plano Anual</span>
+                    <span className="text-white font-bold text-xs uppercase tracking-widest">2 Meses Grátis</span>
                   </div>
                 </div>
-                <div className="h-10 w-px bg-white/20 ml-4" />
-                <div className="flex flex-col ml-4">
-                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Plano Anual</span>
-                  <span className="text-white font-bold text-xs uppercase tracking-widest">2 Meses Grátis</span>
-                </div>
-              </div>
+              )}
 
               <p className="text-gray-300 text-sm md:text-xl mb-10 max-w-2xl font-medium opacity-90 line-clamp-3 leading-relaxed">
                 {featured.description}
@@ -2257,10 +2306,10 @@ const LiveTrackingCard = () => {
         const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
         setIsLive(live);
         setSession(s);
-        if (live) {
-          const w = await openF1Service.getWeather(s.session_key);
-          setWeather(w);
-        }
+        
+        // Fetch weather data for this session (whether active or completed)
+        const w = await openF1Service.getWeather(s.session_key);
+        setWeather(w);
       }
     };
     fetchLive();
@@ -2268,7 +2317,7 @@ const LiveTrackingCard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (!isLive || !session) return null;
+  if (!session) return null;
 
   return (
     <div className="mb-16">
@@ -2276,7 +2325,15 @@ const LiveTrackingCard = () => {
         <div className="w-1.5 h-8 bg-f1-blue" />
         <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter">Live Telemetry</h2>
         <span className="ml-auto bg-f1-blue/20 text-f1-blue text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-f1-blue rounded-full animate-pulse" /> LIVE TRACKING
+          {isLive ? (
+            <>
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" /> EM TEMPO REAL
+            </>
+          ) : (
+            <>
+              <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" /> ÚLTIMA ETAPA CONCLUÍDA
+            </>
+          )}
         </span>
       </div>
 
@@ -2323,7 +2380,12 @@ const LiveTrackingCard = () => {
 
           <div className="p-8 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-f1-blue/5 to-transparent">
              <div className="text-center space-y-4 z-10">
-                <span className="inline-block py-1 px-3 bg-f1-blue/20 text-f1-blue rounded-full text-[8px] font-black uppercase tracking-[0.2em] mb-2 animate-pulse">Race Active</span>
+                <span className={cn(
+                  "inline-block py-1 px-3 rounded-full text-[8px] font-black uppercase tracking-[0.2em] mb-2",
+                  isLive ? "bg-red-500/20 text-red-400 animate-pulse" : "bg-white/10 text-gray-400"
+                )}>
+                  {isLive ? "Race Active" : "Race Concluded"}
+                </span>
                 <img 
                   src="https://www.formula1.com/etc/designs/fom-website/images/f1_logo.svg" 
                   className="h-4 mx-auto invert opacity-50 grayscale" 
@@ -4511,22 +4573,58 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
     const fetchPostData = async () => {
       if (!slug) return;
       
-      const [postRes, reactRes, commRes] = await Promise.all([
-        supabase.from('f1posts').select('*').eq('slug', slug).single(),
-        // We still need the post ID for reactions and comments relationship if we didn't change schema
-        // But if postRes.data exists, we can use postRes.data.id
-        Promise.resolve({ data: null }), // Placeholder for now to get post first
-        Promise.resolve({ data: [] })
+      const [postRes] = await Promise.all([
+        supabase.from('f1posts').select('*').eq('slug', slug).single()
       ]);
       
       if (postRes.data) {
         setPost(postRes.data);
-        const [rRes, cRes] = await Promise.all([
-          supabase.from('f1post_reactions').select('*').eq('post_id', postRes.data.id),
-          supabase.from('f1post_comments').select('*, f1profiles(full_name, email)').eq('post_id', postRes.data.id).order('created_at', { ascending: true })
-        ]);
-        if (rRes.data) setReactions(rRes.data);
-        if (cRes.data) setComments(cRes.data as PostComment[]);
+        
+        // Fetch reactions
+        const { data: rData } = await supabase
+          .from('f1post_reactions')
+          .select('*')
+          .eq('post_id', postRes.data.id);
+        if (rData) setReactions(rData);
+
+        // Fetch comments with split profiles
+        const { data: cData, error: cErr } = await supabase
+          .from('f1post_comments')
+          .select('*')
+          .eq('post_id', postRes.data.id)
+          .order('created_at', { ascending: true });
+
+        if (cErr) {
+          console.error("Erro ao carregar comentários do blog:", cErr);
+        } else if (cData) {
+          const userIds = Array.from(new Set(cData.map(c => c.user_id).filter(Boolean)));
+          const profilesMap: Record<string, { full_name: string | null; email: string }> = {};
+
+          if (userIds.length > 0) {
+            const { data: profiles, error: pErr } = await supabase
+              .from('f1profiles')
+              .select('id, full_name, email')
+              .in('id', userIds);
+
+            if (pErr) {
+              console.error("Erro ao carregar perfis do blog:", pErr);
+            } else if (profiles) {
+              profiles.forEach(p => {
+                profilesMap[p.id] = {
+                  full_name: p.full_name,
+                  email: p.email
+                };
+              });
+            }
+          }
+
+          const commentsWithProfiles: PostComment[] = cData.map(c => ({
+            ...c,
+            f1profiles: profilesMap[c.user_id] || undefined
+          }));
+
+          setComments(commentsWithProfiles);
+        }
       }
       setLoading(false);
     };
@@ -4566,19 +4664,28 @@ const BlogPost = ({ profile }: { profile: Profile | null }) => {
     if (!profile || !post || !newComment.trim()) return;
 
     setIsSubmitting(true);
-    const { data, error } = await supabase
+    const { data: insertedComment, error } = await supabase
       .from('f1post_comments')
       .insert([{
         post_id: post.id,
         user_id: profile.id,
         content: newComment.trim()
       }])
-      .select('*, f1profiles(full_name, email)')
+      .select()
       .single();
 
-    if (data && !error) {
-      setComments([...comments, data as PostComment]);
+    if (insertedComment && !error) {
+      const completeComment: PostComment = {
+        ...insertedComment,
+        f1profiles: {
+          full_name: profile.full_name,
+          email: profile.email
+        }
+      };
+      setComments([...comments, completeComment]);
       setNewComment('');
+    } else if (error) {
+      console.error("Erro ao adicionar comentário:", error);
     }
     setIsSubmitting(false);
   };

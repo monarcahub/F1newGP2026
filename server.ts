@@ -64,6 +64,11 @@ async function startServer() {
           });
         }
 
+        if (fetchResponse.status === 404) {
+          console.log("[OpenF1 Graceful Handling] Status 404: No results found upstream. Returning empty list []");
+          return res.json([]);
+        }
+
         console.error(`OpenF1 API returned status ${fetchResponse.status}. Body:`, errorBody);
         throw new Error(`OpenF1 API returned status ${fetchResponse.status}: ${errorBody.slice(0, 200)}`);
       }

@@ -202,9 +202,38 @@ function getMockSessionsForYear(year: number): Session[] {
 
 export const openF1Service = {
   async getLatestSession(): Promise<Session | null> {
-    // The user requested to always showcase Monaco - Race in "Acontecendo Agora" (Happening Now).
-    // Returning getMockLiveSession directly ensures Monaco displays gracefully and remains resilient 
-    // during live F1 race weekends when OpenF1 imposes global 401 API restrictions.
+    try {
+      const currentYear = new Date().getFullYear();
+      const yearsToTry = [currentYear, currentYear - 1, currentYear - 2, 2024, 2023];
+      
+      for (const year of yearsToTry) {
+        try {
+          const sessions = await this.getSessionsByYear(year);
+          if (sessions && sessions.length > 0) {
+            const now = new Date();
+            // Filter out sessions that are far in the future
+            const pastOrActiveSessions = sessions.filter(s => {
+              const start = new Date(s.date_start);
+              // Include sessions started, or starting in the next 12 hours
+              return start <= new Date(now.getTime() + 12 * 60 * 60 * 1000);
+            });
+
+            if (pastOrActiveSessions.length > 0) {
+              // Sort descending by date_start to get the absolute newest session
+              const sorted = [...pastOrActiveSessions].sort((a, b) => new Date(b.date_start).getTime() - new Date(a.date_start).getTime());
+              // Prefer "Race" session if multiple sessions starting around the same weekend
+              const latest = sorted.find(s => s.session_name.toLowerCase().includes('race')) || sorted[0];
+              return latest;
+            }
+          }
+        } catch (e) {
+          console.warn(`[OpenF1] Falha ao consultar sessões para o ano ${year}:`, e);
+        }
+      }
+    } catch (err) {
+      console.error("[OpenF1] Erro ao buscar sessão mais recente:", err);
+    }
+    
     return getMockLiveSession();
   },
 
