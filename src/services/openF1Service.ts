@@ -37,15 +37,15 @@ function getMockLiveSession(): Session {
   const date_start = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
   const date_end = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
   return {
-    session_key: 9159,
+    session_key: 9165,
     session_name: "Race",
     session_type: "Race",
     date_start,
     date_end,
-    location: "Monte Carlo",
-    country_name: "Monaco",
-    circuit_short_name: "Monaco",
-    meeting_key: 1211
+    location: "Circuit de Barcelona-Catalunya",
+    country_name: "Spain",
+    circuit_short_name: "Barcelona",
+    meeting_key: 1217
   };
 }
 
@@ -152,6 +152,17 @@ function getMockSessionsForYear(year: number): Session[] {
       country_name: "Canada",
       circuit_short_name: "Montreal",
       meeting_key: 1212
+    },
+    {
+      session_key: 9165,
+      session_name: "Race",
+      session_type: "Race",
+      date_start: `${year}-06-13T13:00:00Z`,
+      date_end: `${year}-06-13T15:00:00Z`,
+      location: "Circuit de Barcelona-Catalunya",
+      country_name: "Spain",
+      circuit_short_name: "Barcelona",
+      meeting_key: 1217
     },
     {
       session_key: 9161,
