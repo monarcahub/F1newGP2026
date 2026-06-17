@@ -8,7 +8,7 @@
     phone TEXT,
     full_name TEXT,
     subscription_status TEXT DEFAULT 'ACTIVE' CHECK (subscription_status IN ('ACTIVE', 'INACTIVE', 'TEST')),
-    plan TEXT DEFAULT 'FREE' CHECK (plan IN ('FREE', 'MONTHLY', 'ANNUAL', 'MENSAL', 'ANUAL')),
+    plan TEXT DEFAULT 'FREE' CHECK (plan IN ('FREE', 'MONTHLY', 'ANNUAL', 'MENSAL', 'ANUAL', 'VITAL')),
     role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
   );
@@ -31,7 +31,7 @@
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email TEXT,
     phone TEXT,
-    plan TEXT NOT NULL CHECK (plan IN ('FREE', 'MONTHLY', 'ANNUAL', 'MENSAL', 'ANUAL')),
+    plan TEXT NOT NULL CHECK (plan IN ('FREE', 'MONTHLY', 'ANNUAL', 'MENSAL', 'ANUAL', 'VITAL')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
   );
 
