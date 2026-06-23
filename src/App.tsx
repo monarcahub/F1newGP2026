@@ -1550,17 +1550,16 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
           </span>
           
           <h1 className="text-4xl md:text-6xl font-black mb-8 italic tracking-tighter uppercase leading-tight text-white max-w-3xl">
-            O MAIOR ACERVO DE <span className="text-f1-blue">F1</span> DO BRASIL
+            Plano Vitalício para quem for rápido
           </h1>
           
           <div className="flex flex-col items-center mb-10">
-            <span className="text-white/80 text-[10px] uppercase font-black tracking-widest mb-2">A PARTIR DE</span>
+            <span className="text-white/80 text-[10px] uppercase font-black tracking-widest mb-2">APENAS</span>
             <div className="flex items-start text-white">
               <span className="text-2xl font-black mt-2 mr-1">R$</span>
-              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">14</span>
-              <span className="text-xl font-bold mt-4 md:mt-6 ml-1 opacity-70">/MÊS*</span>
+              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">50,00</span>
             </div>
-            <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">SÓ PARA PLANOS ANUAIS</span>
+            <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">PAGUE UMA VEZ E TENHA ACESSO PARA SEMPRE</span>
           </div>
           
           <div className="flex flex-col items-center gap-6">
@@ -1568,11 +1567,11 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
               onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
               className="bg-white text-black px-20 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-2xl"
             >
-              ASSINE AGORA
+              GARANTIR ACESSO VITALÍCIO
             </button>
             
             <p className="text-[9px] md:text-[10px] text-white/40 max-w-md font-bold uppercase tracking-wider">
-              *Oferta válida até {promoDate}. Desconto válido para o primeiro ano. <a href="#" className="underline">Aplicam termos</a>.
+              *Oferta por tempo limitado. Pague uma única vez e tenha acesso vitalício. <a href="#" className="underline">Aplicam termos</a>.
             </p>
           </div>
         </motion.div>
@@ -1633,9 +1632,9 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
       <div id="plans" className="py-24 px-4 md:px-12 relative">
         <div className="relative z-10 flex flex-col items-center">
           <h2 className="text-3xl md:text-5xl font-black mb-4 italic tracking-tighter uppercase text-center">
-            ESCOLHA O MELHOR PLANO PARA VOCÊ
+            OFERTA INÉDITA E IMPERDÍVEL
           </h2>
-          <span className="text-gray-500 mb-10 text-[10px] font-black uppercase tracking-[0.3em]">ECONOMIZE ATE 50%</span>
+          <span className="text-gray-500 mb-10 text-[10px] font-black uppercase tracking-[0.3em]">APROVEITE ENQUANTO É TEMPO</span>
           
           {/* Billing Cycle Toggle */}
           <div className="flex items-center bg-white/5 p-1 rounded-full mb-16 border border-white/10">
@@ -1655,7 +1654,7 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
                 billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
               )}
             >
-              ANUAL
+              VITALÍCIO
             </button>
           </div>
 
@@ -1749,21 +1748,21 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
               </div>
             )}
 
-            {/* Platinum / Anual */}
+            {/* Platinum / Vitalício */}
             {billingCycle === 'annual' && (
               <div className="p-8 rounded-[2.5rem] border border-citrus-yellow/30 bg-white/5 w-full md:w-[320px] flex flex-col relative shrink-0 overflow-hidden">
                  <div className="absolute top-0 right-0 left-0 h-1 bg-citrus-yellow shadow-[0_0_15px_rgba(255,230,0,0.5)]" />
-                 <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase italic">MELHOR VALOR</div>
+                 <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase italic">OFERTA ESPECIAL</div>
                 <div className="mb-6 text-white text-left mt-4">
-                  <h3 className="text-xl font-bold mb-1 text-white">Plano Anual</h3>
-                  <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">ACESSO TOTAL</p>
+                  <h3 className="text-xl font-bold mb-1 text-white">Plano Vitalício</h3>
+                  <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">ACESSO COMPLETO E ETERNO</p>
                 </div>
                 <div className="mb-6 text-left">
-                  <div className="text-gray-500 line-through text-xs font-bold mb-1">12x R$ 28,00</div>
+                  <div className="text-gray-500 line-through text-xs font-bold mb-1">De R$ 140,00</div>
                   <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter uppercase">
-                    12x R$ 14,00<span className="text-xs font-normal text-gray-500 not-italic ml-1">/mês</span>
+                    R$ 50,00
                   </div>
-                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">R$ 140,00 À VISTA (2 MESES GRÁTIS)</div>
+                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">PAGAMENTO ÚNICO - ASSISTA PARA SEMPRE</div>
                 </div>
                 <ul className="space-y-4 mb-10 flex-1 text-left">
                   <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
@@ -1788,15 +1787,23 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
                   </li>
                 </ul>
                 <a 
-                  href="https://pay.hotmart.com/C102920427K?off=dx3xefic" 
+                  href="https://pay.hotmart.com/C102920427K?off=5b3hm4un&checkoutMode=0" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity"
                 >
-                  ASSINAR ANUAL
+                  ASSINAR VITALÍCIO
                 </a>
               </div>
             )}
+          </div>
+
+          {/* Disclaimer text */}
+          <div className="mt-12 text-center max-w-2xl px-4 relative z-10">
+            <p className="text-[10px] md:text-xs text-gray-400 leading-relaxed font-semibold">
+              ⚠️ <strong>Aviso Importante:</strong> Esta promoção de plano vitalício é válida por tempo limitado. 
+              Após assinar uma vez, não haverá mais nenhuma cobrança (mensal ou anual) e o seu acesso é eterno enquanto a comunidade GridPlay existir.
+            </p>
           </div>
         </div>
       </div>
@@ -4084,7 +4091,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
           )}
         >
-          Anual
+          Vitalício
         </button>
       </div>
 
@@ -4122,23 +4129,23 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             </a>
           </motion.div>
         ) : (
-          /* Annual */
+          /* Annual -> Vitalício */
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full lg:w-[450px]"
           >
-            <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
+            <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Oferta Especial</div>
             <div className="mb-8">
-              <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
-              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest leading-none">Acesso Total Vitalício</p>
+              <h3 className="text-xl font-bold mb-1">Plano Vitalício</h3>
+              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest leading-none">Acesso Completo e Eterno</p>
             </div>
             <div className="mb-8">
-              <div className="text-xs text-gray-500 line-through font-bold mb-1">12x R$ 28,00</div>
+              <div className="text-xs text-gray-500 line-through font-bold mb-1">De R$ 140,00</div>
               <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">
-                12x R$ 14,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+                R$ 50,00
               </div>
-              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter leading-none">R$ 140,00 à vista (2 meses grátis)</p>
+              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter leading-none">Pagamento Único - Assista Para Sempre</p>
             </div>
             <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
@@ -4148,15 +4155,23 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Onboards</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?off=dx3xefic"
+              href="https://pay.hotmart.com/C102920427K?off=5b3hm4un&checkoutMode=0"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
             >
-              Assinar Anual
+              Assinar Vitalício
             </a>
           </motion.div>
         )}
+      </div>
+
+      {/* Disclaimer text */}
+      <div className="mt-12 text-center max-w-2xl mx-auto px-4 relative z-10">
+        <p className="text-[10px] md:text-xs text-gray-400 leading-relaxed font-semibold">
+          ⚠️ <strong>Aviso Importante:</strong> Esta promoção de plano vitalício é válida por tempo limitado. 
+          Após assinar uma vez, não haverá mais nenhuma cobrança (mensal ou anual) e o seu acesso é eterno enquanto a comunidade GridPlay existir.
+        </p>
       </div>
     </div>
   );
