@@ -5981,6 +5981,22 @@ const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showNonSubscriberModal, setShowNonSubscriberModal] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      const isNonSubscriber = !profile || profile.plan === 'FREE' || profile.subscription_status !== 'ACTIVE';
+      if (isNonSubscriber) {
+        const hasSeen = localStorage.getItem('vital_50_promo_seen_v1');
+        if (!hasSeen) {
+          const timer = setTimeout(() => {
+            setShowNonSubscriberModal(true);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [loading, profile]);
 
   useEffect(() => {
     // Initializing standard state
@@ -6181,6 +6197,75 @@ export default function App() {
         <Footer />
         <CookieBanner />
         <Chatwoot profile={profile} />
+
+        <AnimatePresence>
+          {showNonSubscriberModal && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setShowNonSubscriberModal(false);
+                  localStorage.setItem('vital_50_promo_seen_v1', 'true');
+                }}
+                className="absolute inset-0 bg-black/90 backdrop-blur-md"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                transition={{ type: "spring", damping: 25, stiffness: 180 }}
+                className="relative w-full max-w-lg bg-[#0e0e0e] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(240,210,40,0.15)] flex flex-col z-10"
+              >
+                <button 
+                  onClick={() => {
+                    setShowNonSubscriberModal(false);
+                    localStorage.setItem('vital_50_promo_seen_v1', 'true');
+                  }}
+                  className="absolute top-4 right-4 bg-black/60 text-gray-400 hover:text-white p-2 rounded-full transition-colors z-20"
+                  aria-label="Fechar"
+                >
+                  <X size={20} />
+                </button>
+
+                <div className="p-0 overflow-hidden flex flex-col">
+                  <img 
+                    src="https://i.ibb.co/R4zkm1gj/VITAL-50-1782224386154.png" 
+                    alt="Plano Vitalício GridPlay" 
+                    className="w-full h-auto object-contain bg-[#0e0e0e] max-h-[55vh] md:max-h-[65vh]"
+                    referrerPolicy="no-referrer"
+                  />
+                  
+                  <div className="p-6 bg-[#0e0e0e] flex flex-col items-center justify-center gap-4 border-t border-white/5">
+                    <a 
+                      href="https://hotm.io/Vital50f1"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        setShowNonSubscriberModal(false);
+                        localStorage.setItem('vital_50_promo_seen_v1', 'true');
+                      }}
+                      className="w-full py-4 bg-citrus-yellow text-black font-black text-xs uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_20px_rgba(240,210,40,0.3)] hover:shadow-[0_0_35px_rgba(240,210,40,0.6)] text-center flex items-center justify-center gap-2"
+                    >
+                      <Gift size={16} /> Fazer volta rápida
+                    </a>
+                    
+                    <button
+                      onClick={() => {
+                        setShowNonSubscriberModal(false);
+                        localStorage.setItem('vital_50_promo_seen_v1', 'true');
+                      }}
+                      className="text-[10px] text-gray-500 hover:text-gray-300 font-bold uppercase tracking-widest transition-colors"
+                    >
+                      Talvez mais tarde
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </BrowserRouter>
   );
