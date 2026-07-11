@@ -1500,27 +1500,7 @@ const FAQ = () => {
 };
 
 const LandingPage = ({ profile }: { profile: Profile | null }) => {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
-
-  const getPromoDate = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    
-    let promoDate = new Date(year, month, 4);
-    if (now.getDate() > 4) {
-      promoDate = new Date(year, month + 1, 4);
-    }
-    
-    const months = [
-      "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-      "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
-    ];
-    
-    return `4 de ${months[promoDate.getMonth()]}`;
-  };
-
-  const promoDate = getPromoDate();
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-black">
@@ -1545,33 +1525,31 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
           transition={{ duration: 1 }}
           className="relative z-10 max-w-4xl flex flex-col items-center"
         >
-          <span className="text-white font-black tracking-[0.4em] text-[10px] md:text-xs uppercase mb-8 drop-shadow-md">
-            OFERTA POR TEMPO LIMITADO
+          <span className="text-citrus-yellow font-black tracking-[0.4em] text-[10px] md:text-xs uppercase mb-8 drop-shadow-md animate-pulse">
+            A OFERTA ACABOU!
           </span>
           
           <h1 className="text-4xl md:text-6xl font-black mb-8 italic tracking-tighter uppercase leading-tight text-white max-w-3xl">
-            Plano Vitalício para quem for rápido
+            O MAIOR ACERVO DE <span className="text-f1-blue">F1</span> DO BRASIL
           </h1>
           
-          <div className="flex flex-col items-center mb-10">
-            <span className="text-white/80 text-[10px] uppercase font-black tracking-widest mb-2">APENAS</span>
-            <div className="flex items-start text-white">
-              <span className="text-2xl font-black mt-2 mr-1">R$</span>
-              <span className="text-7xl md:text-8xl font-black italic tracking-tighter">50,00</span>
-            </div>
-            <span className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">PAGUE UMA VEZ E TENHA ACESSO PARA SEMPRE</span>
+          <div className="flex flex-col items-center mb-10 bg-white/5 border border-white/10 px-8 py-6 rounded-3xl backdrop-blur-md max-w-md mx-auto">
+            <span className="text-citrus-yellow text-xs font-black uppercase tracking-[0.2em] mb-2">CARRINHO FECHADO</span>
+            <p className="text-gray-300 text-sm font-semibold leading-relaxed">
+              Fechamos as vendas para novos planos pagos. Mas você ainda pode assistir gratuitamente criando uma conta!
+            </p>
           </div>
           
           <div className="flex flex-col items-center gap-6">
             <button 
-              onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-white text-black px-20 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-2xl"
+              onClick={() => setShowLoginModal(true)}
+              className="bg-f1-blue text-white px-20 py-4 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-2xl shadow-f1-blue/20"
             >
-              GARANTIR ACESSO VITALÍCIO
+              ACESSE O PLANO GRÁTIS
             </button>
             
             <p className="text-[9px] md:text-[10px] text-white/40 max-w-md font-bold uppercase tracking-wider">
-              *Oferta por tempo limitado. Pague uma única vez e tenha acesso vitalício. <a href="#" className="underline">Aplicam termos</a>.
+              Acesso gratuito para membros cadastrados. Crie sua conta em segundos.
             </p>
           </div>
         </motion.div>
@@ -1628,182 +1606,32 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
         </div>
       </div>
 
-      {/* Plans Section */}
+      {/* Plans Section -> Now Free Transition Announcement */}
       <div id="plans" className="py-24 px-4 md:px-12 relative">
         <div className="relative z-10 flex flex-col items-center">
-          <h2 className="text-3xl md:text-5xl font-black mb-4 italic tracking-tighter uppercase text-center">
-            OFERTA INÉDITA E IMPERDÍVEL
+          <h2 className="text-3xl md:text-5xl font-black mb-4 italic tracking-tighter uppercase text-center text-white">
+            A OFERTA ACABOU!
           </h2>
-          <span className="text-gray-500 mb-10 text-[10px] font-black uppercase tracking-[0.3em]">APROVEITE ENQUANTO É TEMPO</span>
+          <span className="text-citrus-yellow mb-10 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">CARRINHO FECHADO PARA NOVAS ASSINATURAS</span>
           
-          {/* Billing Cycle Toggle */}
-          <div className="flex items-center bg-white/5 p-1 rounded-full mb-16 border border-white/10">
-            <button 
-              onClick={() => setBillingCycle('monthly')}
-              className={cn(
-                "px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
-                billingCycle === 'monthly' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
-              )}
-            >
-              MENSAL
-            </button>
-            <button 
-              onClick={() => setBillingCycle('annual')}
-              className={cn(
-                "px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
-                billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
-              )}
-            >
-              VITALÍCIO
-            </button>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-6 w-full max-w-6xl mx-auto">
-            {/* Free */}
-            <div className="p-8 rounded-[2.5rem] border border-white/5 bg-dark-card w-full md:w-[320px] flex flex-col transition-all hover:border-white/10 shrink-0">
-               <div className="h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
-                  <div className="h-full bg-f1-blue w-1/3" />
-               </div>
-              <div className="mb-6 text-white text-left">
-                <h3 className="text-xl font-bold mb-1">Plano Free</h3>
-                <p className="text-gray-500 text-[10px] uppercase font-black tracking-widest">ACESSO BÁSICO COM ANÚNCIOS</p>
-              </div>
-              <ul className="space-y-4 mb-10 flex-1">
-                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
-                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  Comunidade no Telegram
-                </li>
-                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
-                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  Apenas corridas em HD
-                </li>
-                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
-                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  Apenas temporada atual ({CURRENT_YEAR}+)
-                </li>
-                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
-                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  R$10 / temporada avulsa
-                </li>
-                <li className="flex items-start gap-3 text-xs text-gray-400 font-medium tracking-tight">
-                  <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                  Participação em Sorteios
-                </li>
-              </ul>
-              <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">GRÁTIS</div>
-              <Link to="/login" className="w-full bg-white/10 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:bg-white/20 transition-all uppercase">MANTER PLANO ATUAL</Link>
+          <div className="bg-dark-card border border-white/10 rounded-[3rem] p-8 md:p-16 max-w-3xl w-full text-center relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-f1-blue/10 rounded-full blur-3xl -mr-16 -mt-16" />
+            
+            <div className="w-20 h-20 bg-citrus-yellow/10 rounded-full flex items-center justify-center mb-8 mx-auto border border-citrus-yellow/20">
+              <Gift className="text-citrus-yellow animate-bounce" size={32} />
             </div>
 
-            {/* Monthly / Standard */}
-            {billingCycle === 'monthly' && (
-              <div className="p-8 rounded-[2.5rem] border border-f1-blue/20 bg-white/5 w-full md:w-[320px] flex flex-col shadow-2xl relative shrink-0">
-                 <div className="h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
-                    <div className="h-full bg-f1-blue w-2/3" />
-                 </div>
-                <div className="mb-6 text-white text-left">
-                  <h3 className="text-xl font-bold mb-1">Plano Mensal</h3>
-                  <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest">ACESSO PREMIUM</p>
-                </div>
-                <ul className="space-y-4 mb-10 flex-1">
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Acervo 1981 - Atual
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Filmes, Séries e Documentários
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Sem anúncios em todo o site
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Canal VIP Telegram
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    F1, F2, F3 e F1 Academy
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Treinos Livres/ Sprints, etc
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-300 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-f1-blue shrink-0 mt-0.5" /> 
-                    Onboards
-                  </li>
-                </ul>
-                <div className="text-3xl font-black italic tracking-tighter uppercase mb-6 text-white text-left">
-                  R$ 30,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
-                </div>
-                <a 
-                  href="https://pay.hotmart.com/C102920427K?off=u3qbgrl1" 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-f1-blue text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center shadow-lg shadow-f1-blue/20 hover:opacity-90 transition-opacity"
-                >
-                  ASSINAR MENSAL
-                </a>
-              </div>
-            )}
-
-            {/* Platinum / Vitalício */}
-            {billingCycle === 'annual' && (
-              <div className="p-8 rounded-[2.5rem] border border-citrus-yellow/30 bg-white/5 w-full md:w-[320px] flex flex-col relative shrink-0 overflow-hidden">
-                 <div className="absolute top-0 right-0 left-0 h-1 bg-citrus-yellow shadow-[0_0_15px_rgba(255,230,0,0.5)]" />
-                 <div className="absolute top-4 right-4 bg-citrus-yellow text-black text-[8px] font-black px-3 py-1 rounded-full uppercase italic">OFERTA ESPECIAL</div>
-                <div className="mb-6 text-white text-left mt-4">
-                  <h3 className="text-xl font-bold mb-1 text-white">Plano Vitalício</h3>
-                  <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest">ACESSO COMPLETO E ETERNO</p>
-                </div>
-                <div className="mb-6 text-left">
-                  <div className="text-gray-500 line-through text-xs font-bold mb-1">De R$ 140,00</div>
-                  <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter uppercase">
-                    R$ 50,00
-                  </div>
-                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">PAGAMENTO ÚNICO - ASSISTA PARA SEMPRE</div>
-                </div>
-                <ul className="space-y-4 mb-10 flex-1 text-left">
-                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    Acervo Completo 1950 - Atual
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    Tudo do plano mensal
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    F1, F2, F3 e F1 Academy
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    Treinos Livres/ Sprints, etc
-                  </li>
-                  <li className="flex items-start gap-3 text-xs text-gray-200 font-medium tracking-tight">
-                    <ChevronRight size={14} className="text-citrus-yellow shrink-0 mt-0.5" /> 
-                    Onboards
-                  </li>
-                </ul>
-                <a 
-                  href="https://pay.hotmart.com/C102920427K?off=5b3hm4un&checkoutMode=0" 
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-citrus-yellow text-black py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-center hover:opacity-90 transition-opacity"
-                >
-                  ASSINAR VITALÍCIO
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Disclaimer text */}
-          <div className="mt-12 text-center max-w-2xl px-4 relative z-10">
-            <p className="text-[10px] md:text-xs text-gray-400 leading-relaxed font-semibold">
-              ⚠️ <strong>Aviso Importante:</strong> Esta promoção de plano vitalício é válida por tempo limitado. 
-              Após assinar uma vez, não haverá mais nenhuma cobrança (mensal ou anual) e o seu acesso é eterno enquanto a comunidade GridPlay existir.
+            <h3 className="text-2xl font-black uppercase italic mb-4 text-white">ACESSE O PLANO GRÁTIS</h3>
+            <p className="text-gray-300 font-medium text-sm md:text-base leading-relaxed mb-10 max-w-xl mx-auto">
+              Decidimos encerrar as vendas de novos planos pagos! A partir de agora, todo o nosso acervo histórico de Fórmula 1 está disponível no **Plano Grátis** para todos os membros registrados na plataforma.
             </p>
+
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="bg-f1-blue text-white px-16 py-5 rounded-full font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_20px_40px_rgba(38,169,224,0.2)]"
+            >
+              CRIAR CONTA OU ENTRAR GRÁTIS
+            </button>
           </div>
         </div>
       </div>
@@ -1867,6 +1695,34 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
           © {CURRENT_YEAR} GRIDPLAY. Este site não é oficial e não está associado de forma alguma ao grupo de empresas da Formula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX e marcas relacionadas são marcas comerciais da Formula One Licensing B.V.
         </p>
       </footer>
+
+      {showLoginModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLoginModal(false)}
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+          >
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
+            >
+              <X size={24} />
+            </button>
+            <div className="p-0">
+              <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2031,8 +1887,8 @@ const Home = ({ profile }: { profile: Profile | null }) => {
       {/* Main Content Area - Dark & Immersive */}
       <div className="relative z-10 mt-8 md:-mt-20 px-4 md:px-12 space-y-16 pb-24">
         
-        {/* Premium Quick Access - Only for Paid Users */}
-        {profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE' && (
+        {/* Premium Quick Access - For Registered Members */}
+        {profile && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2045,13 +1901,13 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                 <div>
                   <div className="flex items-center gap-3 mb-4">
                     <Trophy className="text-citrus-yellow" size={24} />
-                    <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase">Acessos Premium Centralizados</span>
+                    <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase">Acessos Exclusivos GridPlay</span>
                   </div>
                   <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-4">
                     Canais de <span className="text-f1-blue">Transmissão VIP</span>
                   </h2>
                   <p className="text-gray-400 max-w-xl text-sm md:text-base font-medium">
-                    Assinante Premium tem acesso direto aos nossos centros de conteúdo no Telegram. Sem anúncios, com download liberado e alta definição.
+                    Como membro cadastrado, você tem acesso direto aos nossos canais de conteúdo no Telegram. Sem anúncios, com download liberado e alta definição.
                   </p>
                 </div>
 
@@ -2170,57 +2026,33 @@ const Home = ({ profile }: { profile: Profile | null }) => {
           </div>
         ))}
 
-        {/* Highlights Section */}
-        <div className="-mx-4 md:-mx-12">
-          <HighlightsSlider profile={profile} />
-        </div>
-
         {/* Telegram VIP Section - Polished */}
         {profile && (
-          <div className={cn(
-            "p-10 md:p-20 rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-12 border transition-all duration-1000",
-            profile.plan === 'FREE' 
-              ? "bg-dark-card border-white/5" 
-              : "bg-gradient-to-tr from-f1-blue/10 via-black to-citrus-yellow/5 border-f1-blue/20 shadow-[0_0_100px_rgba(38,169,224,0.05)]"
-          )}>
+          <div className="p-10 md:p-20 rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-12 border transition-all duration-1000 bg-gradient-to-tr from-f1-blue/10 via-black to-citrus-yellow/5 border-f1-blue/20 shadow-[0_0_100px_rgba(38,169,224,0.05)]">
             <div className="flex-1 space-y-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-f1-blue/10 flex items-center justify-center rotate-3">
                   <span className="text-f1-blue text-xl">🚀</span>
                 </div>
                 <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter">
-                  {profile.plan === 'FREE' ? "Comunidade GridPlay" : "Canal VIP Telegram"}
+                  Comunidade VIP Telegram
                 </h2>
               </div>
               
               <p className="text-gray-400 text-sm md:text-xl max-w-2xl leading-relaxed font-medium opacity-80">
-                {profile.plan === 'FREE' 
-                  ? "Junte-se a milhares de fãs e discuta cada curva em tempo real. Acesse o conteúdo gratuito e receba alertas de novos uploads." 
-                  : "Experiência definitiva ativada. No Canal VIP você tem o acervo histórico em mãos, suporte prioritário e downloads ilimitados."}
+                Como membro da plataforma, você tem a experiência definitiva ativada. Junte-se a milhares de fãs, discuta cada corrida em tempo real, receba suporte prioritário e downloads ilimitados.
               </p>
-
-              {profile.plan === 'FREE' && (
-                <Link to="/checkout" className="inline-flex items-center gap-3 text-citrus-yellow font-black text-xs uppercase tracking-[0.2em] group">
-                  DESBLOQUEAR ACERVO COMPLETO 1950-{CURRENT_YEAR} 
-                  <ChevronRight size={16} className="group-hover:translate-x-2 transition-transform" />
-                </Link>
-              )}
             </div>
 
             <div className="shrink-0 w-full md:w-auto">
               <a 
-                href={profile.plan === 'FREE' ? "https://t.me/+D15DI9e0ckc0NTQx" : "https://t.me/+NkAHGmviP0kxYzZh"} 
+                href="https://t.me/+D15DI9e0ckc0NTQx" 
                 target="_blank" 
                 rel="noreferrer" 
-                className={cn(
-                  "w-full md:w-auto px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-2xl",
-                  profile.plan === 'FREE' 
-                    ? "bg-white text-black hover:bg-gray-100" 
-                    : "bg-[#24A1DE] text-white hover:shadow-[#24A1DE]/40"
-                )}
+                className="w-full md:w-auto px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-2xl bg-[#24A1DE] text-white hover:shadow-[#24A1DE]/40"
               >
                 <ExternalLink size={24} /> 
-                {profile.plan === 'FREE' ? "Entrar no Grupo Grátis" : "Acessar Canal VIP"}
+                Entrar no Canal VIP
               </a>
             </div>
           </div>
@@ -2759,39 +2591,8 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
         return;
       }
 
-      if (profile.role === 'admin') {
-        setHasAccess(true);
-        fetchVideos();
-        return;
-      }
-
-      if (profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE') {
-        setHasAccess(true);
-        fetchVideos();
-        return;
-      }
-
-      if (currentYear === CURRENT_YEAR) {
-        setHasAccess(true);
-        fetchVideos();
-        return;
-      }
-
-      const { data: purchase } = await supabase
-        .from('f1season_purchases')
-        .select('*')
-        .eq('user_id', profile.id)
-        .eq('season_year', currentYear)
-        .eq('status', 'ACTIVE')
-        .maybeSingle();
-
-      if (purchase) {
-        setHasAccess(true);
-        fetchVideos();
-      } else {
-        setHasAccess(false);
-        setLoading(false);
-      }
+      setHasAccess(true);
+      fetchVideos();
     };
 
     const fetchVideos = async () => {
@@ -2839,36 +2640,18 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
           <Lock className="text-f1-blue" size={40} />
         </div>
         <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-4">
-          {!profile ? "CONTEÚDO EXCLUSIVO" : "Temporada Bloqueada"}
+          CONTEÚDO GRÁTIS PARA MEMBROS
         </h2>
         <p className="text-gray-400 max-w-md mb-8 font-medium italic underline underline-offset-8 decoration-f1-blue/30">
-          {!profile 
-            ? "FAÇA LOGIN E CRIE CONTA GRÁTIS PARA VER - Se preferir sem anúncios e alta qualidade, torne-se Premium para liberar todo o acervo da temporada!"
-            : "Você não tem acesso a esta temporada. Adquira o acesso individual ou torne-se Premium para liberar todo o acervo."
-          }
+          Crie sua conta gratuita em segundos ou faça login para acessar todo o nosso acervo histórico de Fórmula 1.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          {!profile ? (
-            <Link 
-              to="/login"
-              className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
-            >
-              Fazer Login / Criar Conta
-            </Link>
-          ) : (
-            <button 
-              onClick={() => navigate('/archives')}
-              className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
-            >
-              Ir para Arquivos
-            </button>
-          )}
-          <button 
-            onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}
-            className="bg-white/10 text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all"
+          <Link 
+            to="/login"
+            className="bg-f1-blue text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-transform shadow-xl"
           >
-            Ver Planos Premium
-          </button>
+            Fazer Login / Criar Conta
+          </Link>
         </div>
       </div>
     );
@@ -3060,36 +2843,20 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
 };
 
 const Archive = ({ profile }: { profile: Profile | null }) => {
-  const [showPlansModal, setShowPlansModal] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [seasonLinks, setSeasonLinks] = useState<Record<number, string>>({});
-  const [userPurchases, setUserPurchases] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
   const seasons = Array.from({ length: 2025 - 1950 + 1 }, (_, i) => 2025 - i);
-  const isPremium = profile?.subscription_status === 'ACTIVE' && profile?.plan !== 'FREE';
 
   useEffect(() => {
     const fetchData = async () => {
-      // 1. Fetch official links
+      // Fetch official links
       const { data: links } = await supabase.from('f1season_links').select('year, telegram_link');
       if (links) {
         const linkMap = links.reduce((acc, curr) => ({ ...acc, [curr.year]: curr.telegram_link }), {});
         setSeasonLinks(linkMap);
-      }
-
-      // 2. Fetch user individual purchases
-      if (profile) {
-        const { data: purchases } = await supabase
-          .from('f1season_purchases')
-          .select('season_year')
-          .eq('user_id', profile.id)
-          .eq('status', 'ACTIVE');
-        
-        if (purchases) {
-          setUserPurchases(purchases.map(p => p.season_year));
-        }
       }
       setLoading(false);
     };
@@ -3120,8 +2887,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {seasons.map((year) => {
               const hasLink = !!seasonLinks[year];
-              const hasIndividualAccess = userPurchases.includes(year);
-              const canAccess = isPremium || hasIndividualAccess;
+              const canAccess = !!profile;
               
               return (
                 <motion.div 
@@ -3133,9 +2899,6 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                     <div className="relative z-10">
                       <span className="text-f1-blue font-black tracking-widest text-[10px] uppercase block mb-2 opacity-60">Temporada</span>
                       <h3 className="text-5xl font-black italic tracking-tighter leading-none group-hover:text-f1-blue transition-colors">{year}</h3>
-                      {hasIndividualAccess && (
-                        <span className="inline-block mt-2 bg-green-500/10 text-green-500 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-widest border border-green-500/20">Acesso Individual Ativo</span>
-                      )}
                     </div>
 
                     <div className="relative z-10 space-y-4">
@@ -3148,7 +2911,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                             VER NO SITE
                           </button>
 
-                          {isPremium && hasLink && (
+                          {hasLink && (
                             <a 
                               href={seasonLinks[year]}
                               target="_blank"
@@ -3161,19 +2924,11 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] font-black text-citrus-yellow uppercase tracking-widest leading-none">Acesso Mensal</span>
-                            <span className="text-xs font-bold text-white/60 leading-none">R$ 10,00 / temporada</span>
-                          </div>
                           <button 
-                            onClick={() => {
-                              console.log("Opening Plans Modal for year:", year, "Profile:", profile?.id);
-                              setSelectedYear(year);
-                              setShowPlansModal(true);
-                            }}
+                            onClick={() => setShowLoginModal(true)}
                             className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)] block text-center"
                           >
-                            ADQUIRIR ACESSO
+                            ENTRAR GRÁTIS
                           </button>
                         </div>
                       )}
@@ -3192,36 +2947,30 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
       </div>
 
       <AnimatePresence>
-        {showPlansModal && (
+        {showLoginModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowPlansModal(false)}
-              className="absolute inset-0 bg-black/95 backdrop-blur-xl"
+              onClick={() => setShowLoginModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 30 }}
-              className="relative w-full max-w-6xl bg-black rounded-[3rem] overflow-y-auto max-h-[95vh] shadow-[0_0_100px_rgba(0,0,0,1)] border border-white/10 p-6 md:p-20 custom-scrollbar"
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-dark-card rounded-3xl overflow-hidden shadow-2xl border border-white/10"
             >
               <button 
-                onClick={() => setShowPlansModal(false)}
-                className="absolute top-8 right-8 text-gray-500 hover:text-white z-20 transition-colors"
+                onClick={() => setShowLoginModal(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"
               >
-                <X size={28} />
+                <X size={24} />
               </button>
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter mb-4">Escolha seu Acesso</h2>
-                <p className="text-gray-400 max-w-xl mx-auto uppercase text-[10px] font-black tracking-[0.3em]">
-                  {selectedYear 
-                    ? `Você está adquirindo acesso à Temporada ${selectedYear}` 
-                    : 'Torne-se premium para liberar todo o arquivo histórico.'}
-                </p>
+              <div className="p-0">
+                <Login isModal onLoginSuccess={() => setShowLoginModal(false)} />
               </div>
-              <Checkout isModal selectedYear={selectedYear} profile={profile} />
             </motion.div>
           </div>
         )}
@@ -4218,7 +3967,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             billingCycle === 'annual' ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"
           )}
         >
-          Vitalício
+          Anual
         </button>
       </div>
 
@@ -4235,7 +3984,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <p className="text-f1-blue text-[10px] uppercase font-black tracking-widest leading-none">Acesso Premium Total</p>
             </div>
             <div className="text-4xl font-black text-white mb-8 italic tracking-tighter">
-              R$ 30,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
+              R$ 97,00<span className="text-sm font-normal text-gray-500 not-italic ml-1">/mês</span>
             </div>
             <ul className="text-xs text-gray-300 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-f1-blue" /> Acervo 1981 - Atual</li>
@@ -4256,23 +4005,23 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
             </a>
           </motion.div>
         ) : (
-          /* Annual -> Vitalício */
+          /* Annual */
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-gradient-to-br from-citrus-yellow/10 to-black p-10 rounded-[2.5rem] border border-citrus-yellow/30 relative flex flex-col scale-105 z-10 shadow-[0_0_80px_rgba(255,230,0,0.2)] w-full lg:w-[450px]"
           >
-            <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Oferta Especial</div>
+            <div className="absolute -top-4 right-8 bg-citrus-yellow text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase italic tracking-widest shadow-xl">Melhor Valor</div>
             <div className="mb-8">
-              <h3 className="text-xl font-bold mb-1">Plano Vitalício</h3>
-              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest leading-none">Acesso Completo e Eterno</p>
+              <h3 className="text-xl font-bold mb-1">Plano Anual</h3>
+              <p className="text-citrus-yellow text-[10px] uppercase font-black tracking-widest leading-none">Acesso Completo Anual</p>
             </div>
             <div className="mb-8">
-              <div className="text-xs text-gray-500 line-through font-bold mb-1">De R$ 140,00</div>
+              <div className="text-xs text-gray-500 line-through font-bold mb-1">De R$ 360,00</div>
               <div className="text-4xl font-black text-citrus-yellow italic tracking-tighter">
-                R$ 50,00
+                R$ 247,00<span className="text-xs font-normal text-gray-500 not-italic ml-1">/ano</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter leading-none">Pagamento Único - Assista Para Sempre</p>
+              <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-tighter leading-none">Apenas R$ 20,58 por mês no plano anual</p>
             </div>
             <ul className="text-xs text-gray-200 space-y-4 mb-12 flex-1 font-medium">
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Acervo Completo 1950 - Atual</li>
@@ -4282,12 +4031,12 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
               <li className="flex items-center gap-3"><ChevronRight size={14} className="text-citrus-yellow" /> Onboards</li>
             </ul>
             <a 
-              href="https://pay.hotmart.com/C102920427K?off=5b3hm4un&checkoutMode=0"
+              href="https://pay.hotmart.com/C102920427K?off=dx3xefic"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full bg-citrus-yellow text-black font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-citrus-yellow/20 text-center block"
             >
-              Assinar Vitalício
+              Assinar Anual
             </a>
           </motion.div>
         )}
@@ -4296,8 +4045,7 @@ const Checkout = ({ isModal = false, selectedYear = null, profile = null }: { is
       {/* Disclaimer text */}
       <div className="mt-12 text-center max-w-2xl mx-auto px-4 relative z-10">
         <p className="text-[10px] md:text-xs text-gray-400 leading-relaxed font-semibold">
-          ⚠️ <strong>Aviso Importante:</strong> Esta promoção de plano vitalício é válida por tempo limitado. 
-          Após assinar uma vez, não haverá mais nenhuma cobrança (mensal ou anual) e o seu acesso é eterno enquanto a comunidade GridPlay existir.
+          ⚠️ <strong>Aviso Importante:</strong> A renovação do plano anual e mensal ocorre de forma automática de acordo com o período contratado, podendo ser cancelada a qualquer momento na sua área de membros.
         </p>
       </div>
     </div>
@@ -6108,22 +5856,6 @@ const SejaParceiro = ({ profile }: { profile: Profile | null }) => {
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showNonSubscriberModal, setShowNonSubscriberModal] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      const isNonSubscriber = !profile || profile.plan === 'FREE' || profile.subscription_status !== 'ACTIVE';
-      if (isNonSubscriber) {
-        const hasSeen = localStorage.getItem('vital_50_promo_seen_v1');
-        if (!hasSeen) {
-          const timer = setTimeout(() => {
-            setShowNonSubscriberModal(true);
-          }, 1000);
-          return () => clearTimeout(timer);
-        }
-      }
-    }
-  }, [loading, profile]);
 
   useEffect(() => {
     // Initializing standard state
@@ -6325,74 +6057,6 @@ export default function App() {
         <CookieBanner />
         <Chatwoot profile={profile} />
 
-        <AnimatePresence>
-          {showNonSubscriberModal && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => {
-                  setShowNonSubscriberModal(false);
-                  localStorage.setItem('vital_50_promo_seen_v1', 'true');
-                }}
-                className="absolute inset-0 bg-black/90 backdrop-blur-md"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 30 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 30 }}
-                transition={{ type: "spring", damping: 25, stiffness: 180 }}
-                className="relative w-full max-w-lg bg-[#0e0e0e] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(240,210,40,0.15)] flex flex-col z-10"
-              >
-                <button 
-                  onClick={() => {
-                    setShowNonSubscriberModal(false);
-                    localStorage.setItem('vital_50_promo_seen_v1', 'true');
-                  }}
-                  className="absolute top-4 right-4 bg-black/60 text-gray-400 hover:text-white p-2 rounded-full transition-colors z-20"
-                  aria-label="Fechar"
-                >
-                  <X size={20} />
-                </button>
-
-                <div className="p-0 overflow-hidden flex flex-col">
-                  <img 
-                    src="https://i.ibb.co/R4zkm1gj/VITAL-50-1782224386154.png" 
-                    alt="Plano Vitalício GridPlay" 
-                    className="w-full h-auto object-contain bg-[#0e0e0e] max-h-[55vh] md:max-h-[65vh]"
-                    referrerPolicy="no-referrer"
-                  />
-                  
-                  <div className="p-6 bg-[#0e0e0e] flex flex-col items-center justify-center gap-4 border-t border-white/5">
-                    <a 
-                      href="https://hotm.io/Vital50f1"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => {
-                        setShowNonSubscriberModal(false);
-                        localStorage.setItem('vital_50_promo_seen_v1', 'true');
-                      }}
-                      className="w-full py-4 bg-citrus-yellow text-black font-black text-xs uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_20px_rgba(240,210,40,0.3)] hover:shadow-[0_0_35px_rgba(240,210,40,0.6)] text-center flex items-center justify-center gap-2"
-                    >
-                      <Gift size={16} /> Fazer volta rápida
-                    </a>
-                    
-                    <button
-                      onClick={() => {
-                        setShowNonSubscriberModal(false);
-                        localStorage.setItem('vital_50_promo_seen_v1', 'true');
-                      }}
-                      className="text-[10px] text-gray-500 hover:text-gray-300 font-bold uppercase tracking-widest transition-colors"
-                    >
-                      Talvez mais tarde
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </div>
     </BrowserRouter>
   );
