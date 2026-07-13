@@ -1623,7 +1623,7 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
 
             <h3 className="text-2xl font-black uppercase italic mb-4 text-white">ACESSE O PLANO GRÁTIS</h3>
             <p className="text-gray-300 font-medium text-sm md:text-base leading-relaxed mb-10 max-w-xl mx-auto">
-              Decidimos encerrar as vendas de novos planos pagos! A partir de agora, todo o nosso acervo histórico de Fórmula 1 está disponível no **Plano Grátis** para todos os membros registrados na plataforma.
+              Estão encerradas as vendas dos planos pagos de nossa comunidade! Confira agora o que está disponível no <strong className="text-white font-black">Plano Grátis!</strong>
             </p>
 
             <button 
