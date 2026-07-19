@@ -34,7 +34,10 @@ async function startServer() {
   // OpenF1 API Proxy
   app.get("/api/openf1/*", async (req: express.Request, res: express.Response) => {
     try {
-      const subUrl = req.originalUrl.replace(/^\/api\/openf1\/?/, "");
+      const index = req.originalUrl.indexOf("/api/openf1");
+      const subUrl = index !== -1 
+        ? req.originalUrl.substring(index + "/api/openf1".length).replace(/^\//, "") 
+        : req.originalUrl.replace(/^\/api\/openf1\/?/, "");
       const targetUrl = `https://api.openf1.org/v1/${subUrl}`;
 
       const controller = new AbortController();

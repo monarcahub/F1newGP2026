@@ -37,15 +37,15 @@ function getMockLiveSession(): Session {
   const date_start = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
   const date_end = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
   return {
-    session_key: 9165,
+    session_key: 9162,
     session_name: "Race",
     session_type: "Race",
     date_start,
     date_end,
-    location: "Circuit de Barcelona-Catalunya",
-    country_name: "Spain",
-    circuit_short_name: "Barcelona",
-    meeting_key: 1217
+    location: "Spa-Francorchamps",
+    country_name: "Belgium",
+    circuit_short_name: "Spa",
+    meeting_key: 1213
   };
 }
 
