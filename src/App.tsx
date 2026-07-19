@@ -3158,6 +3158,13 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [showTelegramAlert, setShowTelegramAlert] = useState(false);
+  
+  // Real-time telemetry state
+  const [telemetryLoading, setTelemetryLoading] = useState(true);
+  const [telemetrySession, setTelemetrySession] = useState<Session | null>(null);
+  const [telemetryWeather, setTelemetryWeather] = useState<Weather | null>(null);
+  const [telemetryRaceControl, setTelemetryRaceControl] = useState<RaceControl[]>([]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -3220,6 +3227,142 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
     };
     fetchVideo();
   }, [id, profile]);
+
+  useEffect(() => {
+    if (!video) return;
+
+    const fetchTelemetry = async () => {
+      setTelemetryLoading(true);
+      setTelemetrySession(null);
+      setTelemetryWeather(null);
+      setTelemetryRaceControl([]);
+
+      const normalizeText = (text: string) => 
+        text ? text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : '';
+
+      const titleNormalized = normalizeText(video.title);
+      const keywords = titleNormalized
+        .split(/[\s-—_]+/)
+        .map(k => k.trim())
+        .filter(k => k.length > 2 && !['formula', 'grand', 'prix', 'video', 'corrida', 'etapa', 'treino', 'classificacao', 'gp', 'de', 'do', 'da', 'ao', 'tempo', 'real', 'vivo'].includes(k));
+
+      const countryMappings: { [key: string]: string[] } = {
+        'canada': ['canada', 'montreal'],
+        'monaco': ['monaco', 'monte carlo'],
+        'espanha': ['spain', 'barcelona', 'catalunya'],
+        'catalunha': ['spain', 'barcelona', 'catalunya'],
+        'inglaterra': ['great britain', 'silverstone', 'united kingdom'],
+        'gra-bretanha': ['great britain', 'silverstone', 'united kingdom'],
+        'italia': ['italy', 'monza', 'imola', 'milan'],
+        'belgica': ['belgium', 'spa', 'francorchamps'],
+        'holanda': ['netherlands', 'zandvoort'],
+        'austria': ['austria', 'spielberg', 'red bull ring'],
+        'hungria': ['hungary', 'budapest', 'hungaroring'],
+        'singapura': ['singapore', 'marina bay'],
+        'cingapura': ['singapore', 'marina bay'],
+        'japao': ['japan', 'suzuka'],
+        'eua': ['united states', 'austin', 'miami', 'las vegas'],
+        'estados unidos': ['united states', 'austin', 'miami', 'las vegas'],
+        'azerbaijao': ['azerbaijan', 'baku'],
+        'catar': ['qatar', 'lusail'],
+        'arabia saudita': ['saudi arabia', 'jeddah'],
+        'bahrein': ['bahrain', 'sakhir'],
+        'emirados arabes': ['abu dhabi', 'yas marina'],
+        'sao paulo': ['brazil', 'sao paulo', 'interlagos'],
+        'brasil': ['brazil', 'sao paulo', 'interlagos'],
+      };
+
+      const searchTerms = [...keywords];
+      keywords.forEach(k => {
+        if (countryMappings[k]) {
+          searchTerms.push(...countryMappings[k]);
+        }
+      });
+
+      let bestSession: Session | null = null;
+
+      try {
+        const liveSession = await openF1Service.getLatestSession();
+        if (liveSession) {
+          const locLoc = normalizeText(liveSession.location);
+          const countryLoc = normalizeText(liveSession.country_name);
+          const nameLoc = normalizeText(liveSession.session_name);
+          
+          const matchesLive = searchTerms.some(term => 
+            locLoc.includes(term) || 
+            countryLoc.includes(term) ||
+            nameLoc.includes(term)
+          );
+
+          if (matchesLive || video.title.toLowerCase().includes('ao vivo')) {
+            bestSession = liveSession;
+          }
+        }
+      } catch (e) {
+        console.error('Error finding live session fallback:', e);
+      }
+
+      if (!bestSession) {
+        const yearsToSearch = [
+          video.year,
+          new Date().getFullYear(),
+          2024,
+          2023
+        ];
+        const uniqueYears = Array.from(new Set(yearsToSearch.filter(y => typeof y === 'number' && y > 1950)));
+
+        for (const searchYear of uniqueYears) {
+          try {
+            const yearSessions = await openF1Service.getSessionsByYear(searchYear);
+            if (yearSessions && yearSessions.length > 0) {
+              const matched = yearSessions.filter(s => {
+                const locLoc = normalizeText(s.location);
+                const countryLoc = normalizeText(s.country_name);
+                const nameLoc = normalizeText(s.session_name);
+                return searchTerms.some(term => 
+                  locLoc.includes(term) || 
+                  countryLoc.includes(term) ||
+                  nameLoc.includes(term)
+                );
+              });
+              
+              if (matched.length > 0) {
+                bestSession = matched.find(s => normalizeText(s.session_name).includes('race')) || matched[0];
+                break; 
+              }
+            }
+          } catch (err) {
+            console.error(`Error searching sessions for year ${searchYear}:`, err);
+          }
+        }
+      }
+
+      if (!bestSession) {
+        try {
+          bestSession = await openF1Service.getLatestSession();
+        } catch (e) {
+          console.error('Final fallback failed:', e);
+        }
+      }
+
+      if (bestSession) {
+        setTelemetrySession(bestSession);
+        try {
+          const [w, rc] = await Promise.all([
+            openF1Service.getWeather(bestSession.session_key),
+            openF1Service.getRaceControlBySession(bestSession.session_key)
+          ]);
+          setTelemetryWeather(w);
+          setTelemetryRaceControl(rc.slice(0, 10));
+        } catch (e) {
+          console.error('Error loading session attributes:', e);
+        }
+      }
+      setTelemetryLoading(false);
+    };
+
+    fetchTelemetry();
+  }, [video]);
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-dark-bg">
@@ -3425,6 +3568,71 @@ const Watch = ({ profile }: { profile: Profile | null }) => {
           </div>
           
           <div className="w-full md:w-80 bg-dark-card p-6 rounded-xl border border-white/5">
+            {/* Bloco de Telemetria em Tempo Real */}
+            <div className="border-b border-white/10 pb-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-f1-blue uppercase text-xs tracking-widest flex items-center gap-2">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                  Telemetria Real
+                </h3>
+                <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded">
+                  {telemetrySession?.session_type || 'RACE'}
+                </span>
+              </div>
+
+              {telemetryLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-f1-blue border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1 justify-center">
+                        <Thermometer size={11} className="text-gray-500" /> TEMP
+                      </span>
+                      <span className="font-black text-white">
+                        {telemetryWeather?.air_temperature || '--'}°C <span className="text-gray-500 font-medium">/</span> {telemetryWeather?.track_temperature || '--'}°C
+                      </span>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/5 flex flex-col justify-center">
+                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1 justify-center">
+                        <Wind size={11} className="text-gray-500" /> VENTO
+                      </span>
+                      <span className="font-black text-white">
+                        {telemetryWeather?.wind_speed || '--'} km/h
+                      </span>
+                    </div>
+                  </div>
+
+                  {telemetryRaceControl.length > 0 && (
+                    <div className="bg-black/40 p-3 rounded-lg border border-white/5 font-mono text-[10px] space-y-1.5">
+                      <div className="text-[8px] text-gray-500 font-black uppercase tracking-wider mb-1">Últimos Eventos</div>
+                      {telemetryRaceControl.slice(0, 2).map((rc, idx) => {
+                        let flagColor = 'text-gray-400';
+                        if (rc.flag === 'GREEN') flagColor = 'text-green-500';
+                        if (rc.flag === 'YELLOW') flagColor = 'text-yellow-500';
+                        if (rc.flag === 'RED') flagColor = 'text-red-500';
+                        return (
+                          <div key={idx} className="flex gap-2 leading-tight">
+                            <span className="text-gray-600 shrink-0">
+                              {new Date(rc.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                            <span className={`font-bold ${flagColor} uppercase truncate`}>
+                              {rc.message}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <h3 className="font-bold mb-4 text-citrus-yellow uppercase text-xs tracking-widest">Metadados da Corrida</h3>
             <div className="space-y-4 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-2">
