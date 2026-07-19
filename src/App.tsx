@@ -1825,17 +1825,12 @@ const Home = ({ profile }: { profile: Profile | null }) => {
               </h1>
               
               {!(profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE') && (
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-citrus-yellow font-black uppercase tracking-[0.2em]">A partir de</span>
-                    <div className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
-                      R$ 14,00<span className="text-sm md:text-lg font-normal text-gray-400 not-italic ml-1">/mês</span>
-                    </div>
+                <div className="flex flex-col gap-1.5 mb-8">
+                  <div className="text-3xl md:text-5xl font-black text-citrus-yellow italic uppercase tracking-tighter leading-none">
+                    Acesse o Premium Grátis
                   </div>
-                  <div className="h-10 w-px bg-white/20 ml-4" />
-                  <div className="flex flex-col ml-4">
-                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Plano Anual</span>
-                    <span className="text-white font-bold text-xs uppercase tracking-widest">2 Meses Grátis</span>
+                  <div className="text-xs md:text-sm text-gray-300 font-bold tracking-wide">
+                    Clique em 'Fale conosco no chat' e saiba mais!
                   </div>
                 </div>
               )}
