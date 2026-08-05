@@ -1824,17 +1824,6 @@ const Home = ({ profile }: { profile: Profile | null }) => {
                 {featured.title}
               </h1>
               
-              {!(profile && profile.subscription_status === 'ACTIVE' && profile.plan !== 'FREE') && (
-                <div className="flex flex-col gap-1.5 mb-8">
-                  <div className="text-3xl md:text-5xl font-black text-citrus-yellow italic uppercase tracking-tighter leading-none">
-                    Acesse o Premium Grátis
-                  </div>
-                  <div className="text-xs md:text-sm text-gray-300 font-bold tracking-wide">
-                    Clique em 'Fale conosco no chat' e saiba mais!
-                  </div>
-                </div>
-              )}
-
               <p className="text-gray-300 text-sm md:text-xl mb-10 max-w-2xl font-medium opacity-90 line-clamp-3 leading-relaxed">
                 {featured.description}
               </p>
@@ -2840,6 +2829,7 @@ const SeasonPage = ({ profile }: { profile: Profile | null }) => {
 const Archive = ({ profile }: { profile: Profile | null }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [seasonLinks, setSeasonLinks] = useState<Record<number, string>>({});
+  const [seasonsWithVideos, setSeasonsWithVideos] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
@@ -2853,6 +2843,14 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
         const linkMap = links.reduce((acc, curr) => ({ ...acc, [curr.year]: curr.telegram_link }), {});
         setSeasonLinks(linkMap);
       }
+
+      // Fetch seasons with videos in the videos table
+      const { data: videoData } = await supabase.from('videos').select('year');
+      if (videoData) {
+        const yearsSet = new Set<number>(videoData.map(v => Number(v.year)));
+        setSeasonsWithVideos(yearsSet);
+      }
+
       setLoading(false);
     };
     fetchData();
@@ -2882,6 +2880,7 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {seasons.map((year) => {
               const hasLink = !!seasonLinks[year];
+              const hasVideos = seasonsWithVideos.has(year);
               const canAccess = !!profile;
               
               return (
@@ -2899,12 +2898,22 @@ const Archive = ({ profile }: { profile: Profile | null }) => {
                     <div className="relative z-10 space-y-4">
                       {canAccess ? (
                         <div className="space-y-3">
-                          <button 
-                            onClick={() => navigate(`/season/${year}`)}
-                            className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)]"
-                          >
-                            VER NO SITE
-                          </button>
+                          {hasVideos ? (
+                            <button 
+                              onClick={() => navigate(`/season/${year}`)}
+                              className="w-full bg-f1-blue text-white py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-[0_15px_30px_rgba(38,169,224,0.3)]"
+                            >
+                              VER NO SITE
+                            </button>
+                          ) : (
+                            <button 
+                              disabled
+                              className="w-full bg-white/5 text-gray-500 py-4 rounded-full text-[10px] font-black uppercase tracking-[0.2em] cursor-not-allowed border border-white/5 opacity-40"
+                              title="Esta temporada ainda não possui vídeos no site"
+                            >
+                              VER NO SITE
+                            </button>
+                          )}
 
                           {hasLink && (
                             <a 
