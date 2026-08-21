@@ -2110,145 +2110,22 @@ const LiveTrackingCard = () => {
 
   useEffect(() => {
     const fetchLive = async () => {
-      let s: Session | null = null;
-      let targetVideo: Video | null = null;
-
       try {
-        const { data: latestVideos } = await supabase
-          .from('videos')
-          .select('*')
-          .neq('status', 'ARCHIVED')
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const s = await openF1Service.getLatestSession();
+        if (s) {
+          const now = new Date();
+          const start = new Date(s.date_start);
+          const end = s.date_end ? new Date(s.date_end) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+          const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
+          setIsLive(live);
+          setSession(s);
           
-        if (latestVideos && latestVideos.length > 0) {
-          targetVideo = latestVideos[0];
+          // Fetch weather data for this session (whether active or completed)
+          const w = await openF1Service.getWeather(s.session_key);
+          setWeather(w);
         }
       } catch (err) {
-        console.error('Error fetching latest video from supabase for LiveTrackingCard:', err);
-      }
-
-      if (targetVideo) {
-        const normalizeText = (text: string) => 
-          text ? text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() : '';
-
-        // Simple keyword matching (e.g., GP name)
-        const titleNormalized = normalizeText(targetVideo.title);
-        const keywords = titleNormalized
-          .split(/[\s-—_]+/)
-          .map(k => k.trim())
-          .filter(k => k.length > 2 && !['formula', 'grand', 'prix', 'video', 'corrida', 'etapa', 'treino', 'classificacao', 'gp', 'de', 'do', 'da', 'ao', 'tempo', 'real', 'vivo'].includes(k));
-
-        // Maps Portuguese GP countries & locations to OpenF1 English values
-        const countryMappings: { [key: string]: string[] } = {
-          'canada': ['canada', 'montreal'],
-          'monaco': ['monaco', 'monte carlo'],
-          'espanha': ['spain', 'barcelona', 'catalunya'],
-          'catalunha': ['spain', 'barcelona', 'catalunya'],
-          'inglaterra': ['great britain', 'silverstone', 'united kingdom'],
-          'gra-bretanha': ['great britain', 'silverstone', 'united kingdom'],
-          'italia': ['italy', 'monza', 'imola', 'milan'],
-          'belgica': ['belgium', 'spa', 'francorchamps'],
-          'holanda': ['netherlands', 'zandvoort'],
-          'austria': ['austria', 'spielberg', 'red bull ring'],
-          'hungria': ['hungary', 'budapest', 'hungaroring'],
-          'singapura': ['singapore', 'marina bay'],
-          'cingapura': ['singapore', 'marina bay'],
-          'japao': ['japan', 'suzuka'],
-          'eua': ['united states', 'austin', 'miami', 'las vegas'],
-          'estados unidos': ['united states', 'austin', 'miami', 'las vegas'],
-          'azerbaijao': ['azerbaijan', 'baku'],
-          'catar': ['qatar', 'lusail'],
-          'arabia saudita': ['saudi arabia', 'jeddah'],
-          'bahrein': ['bahrain', 'sakhir'],
-          'emirados arabes': ['abu dhabi', 'yas marina'],
-          'sao paulo': ['brazil', 'sao paulo', 'interlagos'],
-          'brasil': ['brazil', 'sao paulo', 'interlagos'],
-        };
-
-        const searchTerms = [...keywords];
-        keywords.forEach(k => {
-          if (countryMappings[k]) {
-            searchTerms.push(...countryMappings[k]);
-          }
-        });
-
-        // Try looking up the current live session first
-        try {
-          const liveSession = await openF1Service.getLatestSession();
-          if (liveSession) {
-            const locLoc = normalizeText(liveSession.location);
-            const countryLoc = normalizeText(liveSession.country_name);
-            const nameLoc = normalizeText(liveSession.session_name);
-            
-            const matchesLive = searchTerms.some(term => 
-              locLoc.includes(term) || 
-              countryLoc.includes(term) ||
-              nameLoc.includes(term)
-            );
-
-            if (matchesLive || targetVideo.title.toLowerCase().includes('ao vivo')) {
-              s = liveSession;
-            }
-          }
-        } catch (e) {
-          console.error('Error finding live session in LiveTrackingCard:', e);
-        }
-
-        // If no matches found in active live session, fallback to search in the video's year or current year
-        if (!s) {
-          const yearsToSearch = [
-            targetVideo.year,
-            new Date().getFullYear(),
-            2024,
-            2023
-          ];
-          const uniqueYears = Array.from(new Set(yearsToSearch.filter(y => typeof y === 'number' && y > 1950)));
-
-          for (const searchYear of uniqueYears) {
-            try {
-              const yearSessions = await openF1Service.getSessionsByYear(searchYear);
-              if (yearSessions && yearSessions.length > 0) {
-                const matched = yearSessions.filter(item => {
-                  const locLoc = normalizeText(item.location);
-                  const countryLoc = normalizeText(item.country_name);
-                  const nameLoc = normalizeText(item.session_name);
-                  return searchTerms.some(term => 
-                    locLoc.includes(term) || 
-                    countryLoc.includes(term) ||
-                    nameLoc.includes(term)
-                  );
-                });
-                
-                if (matched.length > 0) {
-                  // Prefer the race session, otherwise take first match
-                  s = matched.find(item => normalizeText(item.session_name).includes('race')) || matched[0];
-                  break; 
-                }
-              }
-            } catch (err) {
-              console.error(`Error searching sessions for year ${searchYear} in LiveTrackingCard:`, err);
-            }
-          }
-        }
-      }
-
-      // Final fallback to standard latest session if we still don't have a session
-      if (!s) {
-        s = await openF1Service.getLatestSession();
-      }
-
-      if (s) {
-        const now = new Date();
-        const start = new Date(s.date_start);
-        const end = s.date_end ? new Date(s.date_end) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
-        const live = now >= start && now <= new Date(end.getTime() + 15 * 60 * 1000);
-        setIsLive(live);
-        setSession(s);
-        
-        // Fetch weather data for this session (whether active or completed)
-        const w = await openF1Service.getWeather(s.session_key);
-        setWeather(w);
+        console.error('Error in LiveTrackingCard fetchLive:', err);
       }
     };
     fetchLive();
