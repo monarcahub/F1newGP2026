@@ -41,7 +41,14 @@ import {
   Check,
   Gift,
   Sparkles,
-  Crown
+  Crown,
+  CheckCircle2,
+  Compass,
+  Zap,
+  Flag,
+  MessageCircle,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -572,7 +579,6 @@ const generateSlug = (text: string) => {
 
 const Navbar = ({ profile }: { profile: Profile | null }) => {
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -580,94 +586,59 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
     navigate('/login');
   };
 
-  const menuItems = [
-    { label: 'Home', path: '/' },
-    { label: `Temporada ${CURRENT_YEAR}`, path: `/season/${CURRENT_YEAR}` },
-    { label: 'PlayStream', path: '/playstream' },
-    { label: 'Vídeos', path: '/archives' },
-    { label: 'Blog', path: '/blog' },
-  ];
-
   return (
-    <>
-      <header className="fixed top-0 left-0 w-full z-50 flex flex-col">
-        {/* Live Race Banner */}
-        <LiveRaceBanner />
-        
-        <nav className="w-full bg-gradient-to-b from-black/90 via-black/40 to-transparent px-4 md:px-12 py-4 grid grid-cols-2 md:grid-cols-3 items-center backdrop-blur-sm md:backdrop-blur-none border-b border-white/5 md:border-none">
-        {/* Left Section: Mobile Menu + Logo */}
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden text-white p-1 hover:bg-white/10 rounded-md transition-colors"
-          >
-            <Menu size={24} />
-          </button>
-          
-          <Link to="/" className="flex items-center">
+    <header className="fixed top-0 left-0 w-full z-50 flex flex-col">
+      {/* Live Race Banner */}
+      <LiveRaceBanner />
+      
+      <nav className="w-full bg-gradient-to-b from-black/95 via-black/85 to-transparent px-4 md:px-12 py-3.5 flex items-center justify-center backdrop-blur-md border-b border-white/5">
+        <div className="flex items-center justify-center gap-3 sm:gap-6 flex-wrap">
+          {/* Logo */}
+          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
             <img 
               src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
               alt="GRIDPLAY" 
-              className="h-7 md:h-10 object-contain"
+              className="h-7 sm:h-9 object-contain"
               referrerPolicy="no-referrer"
             />
           </Link>
-        </div>
 
-        {/* Center Section: Main Desktop Menu */}
-        <div className="hidden md:flex justify-center">
-          <div className="flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-gray-400">
-            {menuItems.map((item) => (
-              <Link 
-                key={item.path + item.label} 
-                to={item.path} 
-                className="hover:text-white transition-colors relative group py-2"
-              >
-                {item.label}
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-f1-blue transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Section: Auth Action */}
-        <div className="flex items-center justify-end gap-3 md:gap-4">
-          {/* Desktop Search - Hidden on mobile as per request */}
-          <button className="hidden md:block text-gray-400 hover:text-white p-2">
-            <Search size={20} />
-          </button>
-
+          {/* Minha conta e ícone de sair logo ao lado centralizado */}
           {profile ? (
-            <div className="flex items-center gap-2 md:gap-4 relative group">
-              <div className="flex items-center gap-2">
-                <Link to="/account" className="text-gray-300 hover:text-white flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10 transition-all">
-                  <User size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Minha Conta</span>
-                </Link>
-                <button 
-                  onClick={handleLogout} 
-                  className="text-gray-400 hover:text-red-500 transition-colors p-2"
-                >
-                  <LogOut size={20} />
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/account" 
+                className="text-gray-200 hover:text-white flex items-center gap-1.5 bg-white/10 hover:bg-white/15 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full border border-white/15 transition-all text-xs font-bold tracking-wide shadow-sm"
+              >
+                <User size={15} className="text-f1-blue" />
+                <span>Minha Conta</span>
+              </Link>
+              <button 
+                onClick={handleLogout} 
+                title="Sair da Conta"
+                className="text-gray-400 hover:text-red-400 p-1.5 sm:p-2 bg-white/5 hover:bg-red-500/10 rounded-full border border-white/10 hover:border-red-500/30 transition-all flex items-center justify-center"
+              >
+                <LogOut size={16} />
+              </button>
 
-              {/* Admin Dropdown - Hover Trigger */}
               {profile.role === 'admin' && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all py-2 z-50">
-                  <Link 
-                    to="/admin" 
-                    className="flex items-center gap-3 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                  >
-                    <Settings size={14} />
-                    Painel Admin
-                  </Link>
-                </div>
+                <Link 
+                  to="/admin" 
+                  title="Painel Admin" 
+                  className="text-amber-400 hover:text-amber-300 p-1.5 sm:p-2 bg-amber-500/10 hover:bg-amber-500/20 rounded-full border border-amber-500/30 transition-all flex items-center justify-center"
+                >
+                  <Settings size={16} />
+                </Link>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-4">
-              <Link to="/login" className="hidden md:block text-white text-sm font-bold uppercase tracking-widest hover:opacity-80 transition-opacity">Entrar</Link>
+            <div className="flex items-center gap-3">
+              <Link 
+                to="/login" 
+                className="text-white text-xs font-bold uppercase tracking-widest hover:opacity-80 transition-opacity px-2.5 py-1.5"
+              >
+                Entrar
+              </Link>
               <button 
                 onClick={() => {
                   if (window.location.pathname !== '/') {
@@ -676,7 +647,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
                     document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' });
                   }
                 }}
-                className="bg-white text-black px-4 md:px-6 py-2 rounded-sm text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors"
+                className="bg-white text-black px-3.5 py-1.5 rounded-sm text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors"
               >
                 Assine Agora
               </button>
@@ -684,94 +655,7 @@ const Navbar = ({ profile }: { profile: Profile | null }) => {
           )}
         </div>
       </nav>
-      </header>
-
-      {/* Mobile Drawer */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] md:hidden"
-            />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 left-0 bottom-0 w-[80%] max-w-xs bg-dark-bg border-r border-white/10 z-[70] md:hidden p-8 flex flex-col shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-12">
-                <img 
-                  src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
-                  alt="GRIDPLAY" 
-                  className="h-7 object-contain"
-                  referrerPolicy="no-referrer"
-                />
-                <button onClick={() => setIsMobileMenuOpen(false)} className="text-white">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-8 flex-grow">
-                {menuItems.map((item) => (
-                  <Link 
-                    key={item.label} 
-                    to={item.path} 
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-lg font-black italic uppercase tracking-tighter hover:text-f1-blue transition-colors flex items-center justify-between group"
-                  >
-                    {item.label}
-                    <ChevronRight size={20} className="text-gray-600 group-hover:text-f1-blue" />
-                  </Link>
-                ))}
-                
-                {/* ENTRAR as last item in mobile menu if not logged in */}
-                {!profile && (
-                  <Link 
-                    to="/login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="mt-4 pt-8 border-t border-white/10 text-lg font-black italic uppercase tracking-tighter text-citrus-yellow hover:opacity-80 transition-opacity flex items-center justify-between group"
-                  >
-                    ENTRAR
-                    <ChevronRight size={20} />
-                  </Link>
-                )}
-              </div>
-
-              {profile && (
-                <div className="mt-auto pt-8 border-t border-white/10 space-y-6">
-                  <div className="flex items-center gap-4 text-gray-400">
-                    <User size={20} />
-                    <span className="text-sm font-bold uppercase tracking-widest truncate">{profile.email}</span>
-                  </div>
-                  {profile.role === 'admin' && (
-                    <Link 
-                      to="/admin" 
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center gap-4 text-f1-blue font-bold uppercase tracking-widest text-sm"
-                    >
-                      <Settings size={20} />
-                      Painel Admin
-                    </Link>
-                  )}
-                  <button 
-                    onClick={handleLogout}
-                    className="flex items-center gap-4 text-red-500 font-bold uppercase tracking-widest text-sm"
-                  >
-                    <LogOut size={20} />
-                    Sair da Conta
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
+    </header>
   );
 };
 
@@ -1729,7 +1613,293 @@ const LandingPage = ({ profile }: { profile: Profile | null }) => {
 
 // --- Pages ---
 
+const VIP_COMMUNITY_LINKS = [
+  {
+    title: "Grupo principal F1 desde 1981",
+    subtitle: "Acervo de 1981 a 2026 & transmissões ao vivo",
+    url: "https://t.me/+D15DI9e0ckc0NTQx",
+    icon: Trophy,
+    color: "from-amber-500/15 via-yellow-500/10 to-amber-500/5",
+    border: "border-amber-400/40 hover:border-amber-400",
+    glow: "hover:shadow-[0_0_25px_rgba(251,191,36,0.35)]",
+    iconBg: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+    badge: "Principal",
+  },
+  {
+    title: "Onboarding F1",
+    subtitle: "Boas-vindas, orientações e suporte para começar",
+    url: "https://t.me/c/3849731179/1",
+    icon: Compass,
+    color: "from-cyan-500/15 via-blue-500/10 to-cyan-500/5",
+    border: "border-cyan-400/40 hover:border-cyan-400",
+    glow: "hover:shadow-[0_0_25px_rgba(34,211,238,0.35)]",
+    iconBg: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+    badge: "Comece Aqui",
+  },
+  {
+    title: "Formula 2",
+    subtitle: "Todas as etapas, corridas principais e sprint da F2",
+    url: "https://t.me/+j1Kkc9CuBqkxNmVh",
+    icon: Zap,
+    color: "from-blue-500/15 via-indigo-500/10 to-blue-500/5",
+    border: "border-blue-400/40 hover:border-blue-400",
+    glow: "hover:shadow-[0_0_25px_rgba(59,130,246,0.35)]",
+    iconBg: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    badge: "F2",
+  },
+  {
+    title: "Formula 3",
+    subtitle: "Grid de acesso, treinos e corridas da Fórmula 3",
+    url: "https://t.me/+j1Kkc9CuBqkxNmVh",
+    icon: Flag,
+    color: "from-emerald-500/15 via-teal-500/10 to-emerald-500/5",
+    border: "border-emerald-400/40 hover:border-emerald-400",
+    glow: "hover:shadow-[0_0_25px_rgba(52,211,153,0.35)]",
+    iconBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    badge: "F3",
+  },
+  {
+    title: "F1 Academy",
+    subtitle: "Cobertura completa e transmissões da F1 Academy",
+    url: "https://t.me/+j1Kkc9CuBqkxNmVh",
+    icon: Sparkles,
+    color: "from-purple-500/15 via-pink-500/10 to-purple-500/5",
+    border: "border-purple-400/40 hover:border-purple-400",
+    glow: "hover:shadow-[0_0_25px_rgba(192,132,252,0.35)]",
+    iconBg: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+    badge: "Exclusivo",
+  },
+];
+
+const VipLinksPage = ({ profile }: { profile: Profile | null }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    sessionStorage.removeItem('upgrade_prompted_once');
+    navigate('/login');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050811] text-white relative overflow-hidden flex flex-col items-center justify-start pt-24 pb-16 px-4">
+      {/* Background Cyber Glow & Retro Grid Horizon (Matching image.png) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-f1-blue/20 via-purple-600/15 to-transparent rounded-full blur-[110px]" />
+        <div className="absolute top-1/4 -right-20 w-80 h-80 bg-f1-blue/10 rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 -left-20 w-80 h-80 bg-purple-600/10 rounded-full blur-[100px]" />
+        
+        {/* Perspective Synthwave Grid Floor at bottom */}
+        <div 
+          className="absolute bottom-0 inset-x-0 h-96 opacity-20"
+          style={{
+            backgroundImage: `
+              linear-gradient(to bottom, transparent, #050811 90%),
+              linear-gradient(to right, rgba(56, 189, 248, 0.3) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(168, 85, 247, 0.3) 1px, transparent 1px)
+            `,
+            backgroundSize: '44px 44px',
+            transform: 'perspective(400px) rotateX(60deg)',
+            transformOrigin: 'bottom center'
+          }}
+        />
+      </div>
+
+      {/* Central Phone Mockup / Bio Link Container */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-[440px] mx-auto relative z-10"
+      >
+        {/* Phone Frame Shell */}
+        <div className="w-full rounded-[2.5rem] border border-cyan-500/20 bg-gradient-to-b from-[#0c1427]/95 via-[#0a0f1e]/95 to-[#070b16]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(38,169,224,0.18)] p-6 md:p-7 relative overflow-hidden flex flex-col items-center">
+          
+          {/* Simulated Top Camera / Speaker Notch */}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-12 h-1 bg-white/20 rounded-full" />
+            <div className="w-2.5 h-2.5 rounded-full bg-black border border-white/20" />
+          </div>
+
+          {/* Profile Avatar / Emblem (Glowing Cyan Neon Frame) */}
+          <div className="relative mb-4 group">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-f1-blue via-cyan-400 to-purple-500 opacity-70 blur-md group-hover:opacity-100 transition duration-500 animate-pulse" />
+            <div className="relative w-20 h-20 rounded-2xl bg-[#060a16] border border-cyan-400/50 p-2.5 flex items-center justify-center shadow-xl">
+              <img 
+                src="https://i.ibb.co/DP8YRq1Y/logo-GRIDPLAY-2026.png" 
+                alt="GRIDPLAY VIP" 
+                className="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(38,169,224,0.8)]"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+
+          {/* Title with Verified Badge */}
+          <h1 className="text-xl md:text-2xl font-black text-white flex items-center justify-center gap-1.5 tracking-tight text-center">
+            Comunidade VIP F1
+            <CheckCircle2 className="w-5 h-5 text-f1-blue fill-f1-blue/20 flex-shrink-0" />
+          </h1>
+
+          {/* User Status / Account identifier */}
+          <div className="flex items-center gap-2 mt-1 mb-5">
+            <span className="text-xs font-semibold text-gray-400">
+              {profile?.email ? profile.email : 'Membro Assinante VIP'}
+            </span>
+          </div>
+
+          {/* Exact requested text box */}
+          <div className="w-full bg-gradient-to-b from-cyan-500/15 via-f1-blue/10 to-emerald-500/10 border border-cyan-400/30 rounded-2xl p-4 text-center shadow-[0_0_25px_rgba(38,169,224,0.15)] relative overflow-hidden mb-6">
+            <div className="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Assinatura Ativa
+            </div>
+            <p className="text-sm md:text-base font-bold text-white leading-relaxed">
+              Detectamos que você já é assinante. Parabéns, aqui estão os seus grupos!
+            </p>
+          </div>
+
+          {/* Links Menu - The 5 Telegram Groups */}
+          <div className="w-full space-y-3 mb-6">
+            {VIP_COMMUNITY_LINKS.map((link) => {
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.title}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "w-full block relative p-4 rounded-2xl border bg-gradient-to-r backdrop-blur-md transition-all duration-300 group hover:scale-[1.02] active:scale-[0.98]",
+                    link.color,
+                    link.border,
+                    link.glow
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border shadow-inner", link.iconBg)}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-white tracking-wide truncate">
+                            {link.title}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-300 font-medium truncate mt-0.5">
+                          {link.subtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0 text-cyan-400 group-hover:text-white transition-colors">
+                      <Send className="w-4 h-4 transform group-hover:translate-x-1 group-hover:-translate-y-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Video / Tutorial Box (Matching Reference image.png) */}
+          <div className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 mb-6 relative overflow-hidden">
+            <div className="flex items-center gap-2 text-cyan-400 text-xs font-black uppercase tracking-wider mb-2">
+              <Film className="w-4 h-4" />
+              <span>Dica de Acesso Rápido</span>
+            </div>
+            <div className="space-y-2 text-xs text-gray-300 font-medium leading-relaxed">
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                <span>Toque em cada um dos links acima para entrar nos grupos do Telegram.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                <span>Fixe os canais no topo do Telegram para não perder as transmissões ao vivo.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="w-4 h-4 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                <span>Mantenha as notificações ativadas para receber avisos em tempo real.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Platform Navigation Buttons */}
+          <div className="w-full space-y-2.5 pt-2 border-t border-white/10 mb-6">
+            <button
+              onClick={() => navigate('/plataforma')}
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-f1-blue to-cyan-500 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(38,169,224,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              Acessar Plataforma de Streaming
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => navigate('/account')}
+                className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+              >
+                <User className="w-3.5 h-3.5" />
+                Minha Conta
+              </button>
+              <button
+                onClick={handleLogout}
+                className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-red-500/15 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-red-400 font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sair da Conta
+              </button>
+            </div>
+          </div>
+
+          {/* Social Icons at the bottom (matching image.png) */}
+          <div className="flex items-center justify-center gap-5 text-gray-400 mb-4">
+            <a 
+              href="https://t.me/+D15DI9e0ckc0NTQx" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-2 rounded-full hover:text-cyan-400 hover:bg-white/5 transition-all"
+              title="Telegram"
+            >
+              <Send className="w-5 h-5" />
+            </a>
+            <a 
+              href="https://instagram.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-2 rounded-full hover:text-pink-400 hover:bg-white/5 transition-all"
+              title="Instagram"
+            >
+              <Heart className="w-5 h-5" />
+            </a>
+            <a 
+              href="https://youtube.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-2 rounded-full hover:text-red-400 hover:bg-white/5 transition-all"
+              title="YouTube"
+            >
+              <Film className="w-5 h-5" />
+            </a>
+          </div>
+
+          {/* Footer branding */}
+          <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase text-center">
+            GRIDPLAY VIP • Comunidade Exclusiva
+          </p>
+
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const Home = ({ profile }: { profile: Profile | null }) => {
+  // If not logged in, keep standard landing page as requested
+  if (!profile) return <LandingPage profile={profile} />;
+
+  // Upon login / for authenticated subscribers, display the VIP link-in-bio page
+  return <VipLinksPage profile={profile} />;
+};
+
+const CatalogHome = ({ profile }: { profile: Profile | null }) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -1783,6 +1953,25 @@ const Home = ({ profile }: { profile: Profile | null }) => {
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden">
+      {/* Tarja de Aviso na Plataforma de Streaming */}
+      <div className="pt-16 sm:pt-20 bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-white border-b-2 border-amber-300 shadow-[0_4px_30px_rgba(220,38,38,0.5)] relative z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5 flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-yellow-300 flex-shrink-0 animate-bounce" />
+            <span className="text-xs sm:text-sm md:text-base font-black uppercase tracking-wide drop-shadow">
+              Não será mais atualizada com as novas corridas aqui, entre nos grupos para acompanhar!
+            </span>
+          </div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 bg-black/60 hover:bg-black text-cyan-300 hover:text-white border border-cyan-400/50 hover:border-cyan-400 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider transition-all hover:scale-105 flex-shrink-0 shadow-lg"
+          >
+            <Send className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Entrar nos Grupos</span>
+          </Link>
+        </div>
+      </div>
+
       {featured && (
         <FeaturedDetailsModal 
           isOpen={showFeaturedDetails} 
@@ -6127,6 +6316,8 @@ export default function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home profile={profile} />} />
+            <Route path="/plataforma" element={<CatalogHome profile={profile} />} />
+            <Route path="/links" element={<VipLinksPage profile={profile} />} />
             <Route path="/login" element={profile ? <Navigate to="/" /> : <Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/watch/:id" element={<Watch profile={profile} />} />
