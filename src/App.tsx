@@ -1617,7 +1617,7 @@ const VIP_COMMUNITY_LINKS = [
   {
     title: "Grupo principal F1 desde 1981",
     subtitle: "Acervo de 1981 a 2026 & transmissões ao vivo",
-    url: "https://t.me/+D15DI9e0ckc0NTQx",
+    url: "https://t.me/+NkAHGmviP0kxYzZh",
     icon: Trophy,
     color: "from-amber-500/15 via-yellow-500/10 to-amber-500/5",
     border: "border-amber-400/40 hover:border-amber-400",
@@ -1852,7 +1852,7 @@ const VipLinksPage = ({ profile }: { profile: Profile | null }) => {
           {/* Social Icons at the bottom (matching image.png) */}
           <div className="flex items-center justify-center gap-5 text-gray-400 mb-4">
             <a 
-              href="https://t.me/+D15DI9e0ckc0NTQx" 
+              href="https://t.me/+NkAHGmviP0kxYzZh" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="p-2 rounded-full hover:text-cyan-400 hover:bg-white/5 transition-all"
@@ -2219,7 +2219,7 @@ const CatalogHome = ({ profile }: { profile: Profile | null }) => {
 
             <div className="shrink-0 w-full md:w-auto">
               <a 
-                href="https://t.me/+D15DI9e0ckc0NTQx" 
+                href="https://t.me/+NkAHGmviP0kxYzZh" 
                 target="_blank" 
                 rel="noreferrer" 
                 className="w-full md:w-auto px-12 py-6 rounded-full font-black uppercase tracking-widest text-sm flex items-center justify-center gap-4 transition-all hover:scale-105 shadow-2xl bg-[#24A1DE] text-white hover:shadow-[#24A1DE]/40"
